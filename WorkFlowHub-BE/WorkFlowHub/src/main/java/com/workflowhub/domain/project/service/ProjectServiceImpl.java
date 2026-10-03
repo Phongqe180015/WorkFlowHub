@@ -32,21 +32,9 @@ public class ProjectServiceImpl
         return repository.findAll(spec, pageable);
     }
 
-    /**
-     * Updates a project with only the fields that are safe to change.
-     *
-     * <p>This is the correct approach: fetch the managed entity, update
-     * only the relevant fields, then save. This preserves the audit fields
-     * ({@code createdAt}) and the version counter (optimistic locking).</p>
-     */
     @Override
-    @Transactional
-    public Project update(UUID id, Project incoming) {
-        Project existing = findById(id); // throws NotFoundException if absent
-        existing.setName(incoming.getName());
-        existing.setDescription(incoming.getDescription());
-        // Note: status changes would typically go through dedicated methods
-        // (e.g., archive(), activate()) with business-rule validation.
-        return repository.save(existing);
+    public Project update(UUID id, Project project) {
+        return null;
     }
+
 }

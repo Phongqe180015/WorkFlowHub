@@ -36,6 +36,9 @@ public class Project extends BaseEntity {
     @Column(name = "status", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
     private ProjectStatus status = ProjectStatus.ACTIVE;
+    @Id
+    private Long id;
+
 
     public enum ProjectStatus {
         ACTIVE, ARCHIVED, DELETED
