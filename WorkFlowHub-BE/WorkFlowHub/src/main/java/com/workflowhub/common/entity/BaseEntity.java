@@ -38,17 +38,6 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     /**
-     * Primary key — randomly generated UUID.
-     *
-     * <p>{@code columnDefinition = "uuid"} ensures PostgreSQL uses its native {@code uuid}
-     * column type instead of storing a string, which is more efficient for indexing.</p>
-     */
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
-
-    /**
      * Timestamp of when this entity was first persisted (UTC).
      * Set automatically by JPA auditing; never updated afterward.
      */
@@ -64,36 +53,4 @@ public abstract class BaseEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /**
-     * Optimistic-locking version counter.
-     * Hibernate increments this on every UPDATE. A mismatch throws
-     * {@link jakarta.persistence.OptimisticLockException}.
-     */
-    @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
-
-    // -----------------------------------------------------------------------
-    // equals / hashCode — identity based on database PK
-    // -----------------------------------------------------------------------
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BaseEntity that)) return false;
-        // Two transient (not yet persisted) entities with null id are never equal.
-        return id != null && Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        // Using a stable constant for transient entities (id == null).
-        // Once persisted, the hash is derived from the id.
-        return id == null ? System.identityHashCode(this) : Objects.hash(id);
-    }
-
-    @Override
-    public String toString() {
-        return "%s{id=%s, version=%s}".formatted(getClass().getSimpleName(), id, version);
-    }
 }

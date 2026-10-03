@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ProjectService extends BaseService<Project, UUID> {
 
     org.springframework.data.domain.Page<Project> getPage(String search, Pageable pageable);
+
+    Project update(UUID id, Project project);
 }

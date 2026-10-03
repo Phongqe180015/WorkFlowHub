@@ -73,19 +73,6 @@ public interface BaseService<T extends BaseEntity, ID> {
     T save(T entity);
 
     /**
-     * Updates an existing entity.
-     *
-     * <p>Concrete implementations must define which fields are updated and
-     * how the merge is performed. The {@link BaseServiceImpl} leaves this
-     * abstract on purpose.</p>
-     *
-     * @param id     the primary key of the entity to update
-     * @param entity the entity carrying the updated values
-     * @return the updated entity
-     */
-    T update(ID id, T entity);
-
-    /**
      * Deletes an entity by its primary key.
      *
      * @param id the primary key

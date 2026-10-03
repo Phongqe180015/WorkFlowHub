@@ -127,12 +127,4 @@ public abstract class BaseServiceImpl<
         repository.deleteById(id);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p><strong>This method is intentionally abstract</strong> — see
-     * {@link BaseService#update(Object, BaseEntity)} for the design rationale.</p>
-     */
-    @Override
-    public abstract T update(ID id, T entity);
 }
