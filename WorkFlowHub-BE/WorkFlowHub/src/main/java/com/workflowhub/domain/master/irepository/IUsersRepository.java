@@ -1,7 +1,7 @@
-package com.workflowhub.domain.workflow.security.irepository;
+package com.workflowhub.domain.master.irepository;
 
 import com.workflowhub.common.repository.BaseRepository;
-import com.workflowhub.domain.workflow.security.entity.UsersEntity;
+import com.workflowhub.domain.master.entity.UsersEntity;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;

@@ -1,15 +1,15 @@
-package com.workflowhub.domain.workflow.security.service;
+package com.workflowhub.domain.master.service;
 
 import com.workflowhub.common.exception.ConflictException;
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
-import com.workflowhub.domain.workflow.security.dto.request.CreateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.request.UpdateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.response.UserResponse;
-import com.workflowhub.domain.workflow.security.entity.UsersEntity;
-import com.workflowhub.domain.workflow.security.irepository.IUsersRepository;
-import com.workflowhub.domain.workflow.security.iservice.IUsersService;
-import com.workflowhub.domain.workflow.security.mapper.IUsersMapper;
+import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
+import com.workflowhub.domain.master.dto.response.UserResponse;
+import com.workflowhub.domain.master.entity.UsersEntity;
+import com.workflowhub.domain.master.irepository.IUsersRepository;
+import com.workflowhub.domain.master.iservice.IUsersService;
+import com.workflowhub.domain.master.mapper.IUsersMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

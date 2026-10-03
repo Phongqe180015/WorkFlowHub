@@ -1,4 +1,4 @@
-package com.workflowhub.domain.workflow.security.dto.response;
+package com.workflowhub.domain.master.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,13 +13,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserResponse {
+public class ProjectResponse {
 
     private Long id;
-    private String email;
     private String name;
-    private String avatar;
-    private String status;
+    private String description;
+    private Long ownerId;
+    private String ownerName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
