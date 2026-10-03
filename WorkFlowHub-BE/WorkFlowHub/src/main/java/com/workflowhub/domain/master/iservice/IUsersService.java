@@ -1,8 +1,8 @@
-package com.workflowhub.domain.workflow.security.iservice;
+package com.workflowhub.domain.master.iservice;
 
-import com.workflowhub.domain.workflow.security.dto.request.CreateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.request.UpdateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.response.UserResponse;
+import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
+import com.workflowhub.domain.master.dto.response.UserResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

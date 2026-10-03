@@ -1,13 +1,13 @@
-package com.workflowhub.domain.workflow.security.controller;
+package com.workflowhub.domain.master.controller;
 
 import com.workflowhub.common.constant.AppConstants;
 import com.workflowhub.common.controller.BaseController;
 import com.workflowhub.common.dto.response.ApiResponse;
 import com.workflowhub.common.dto.response.PageResponse;
-import com.workflowhub.domain.workflow.security.dto.request.CreateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.request.UpdateUserRequest;
-import com.workflowhub.domain.workflow.security.dto.response.UserResponse;
-import com.workflowhub.domain.workflow.security.iservice.IUsersService;
+import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
+import com.workflowhub.domain.master.dto.response.UserResponse;
+import com.workflowhub.domain.master.iservice.IUsersService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

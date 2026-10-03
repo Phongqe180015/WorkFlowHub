@@ -1,4 +1,4 @@
-package com.workflowhub.domain.workflow.security.entity;
+package com.workflowhub.domain.master.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.workflowhub.common.entity.BaseEntity;

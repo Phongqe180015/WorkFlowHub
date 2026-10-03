@@ -1,7 +1,6 @@
-package com.workflowhub.domain.workflow.security.dto.request;
+package com.workflowhub.domain.master.dto.request;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,18 +13,15 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateUserRequest {
+public class UpdateUserRequest {
 
-    @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     @Size(max = 255, message = "Email cannot exceed 255 characters")
     private String email;
 
-    @NotBlank(message = "Password is required")
     @Size(min = 6, max = 255, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotBlank(message = "Name is required")
     @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
