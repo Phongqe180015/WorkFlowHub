@@ -4,7 +4,7 @@ spring:
 
   # Profile mặc định (đổi giữa 'local' và 'dev')
   profiles:
-    active: dev
+    active: local
 
   docker:
     compose:

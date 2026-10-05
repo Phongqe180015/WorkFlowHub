@@ -25,7 +25,8 @@ public class ProjectMemberService implements IProjectMemberService {
             RsqlSpecificationBuilder.forEntity(ProjectMemberEntity.class)
                     .field("projectId", "project.id", Long.class)
                     .field("userId",    "user.id",    Long.class)
-                    .field("role",      "role",        String.class)
+                    .field("roleId",    "role.id",    Long.class)
+                    .field("roleName",  "role.name",  String.class)
                     .build();
 
     public static final String PROJECT_MEMBER = "ProjectMember";

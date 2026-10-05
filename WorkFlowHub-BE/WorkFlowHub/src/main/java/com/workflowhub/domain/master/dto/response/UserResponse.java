@@ -20,6 +20,7 @@ public class UserResponse {
     private String name;
     private String avatar;
     private String status;
+    private Long roleId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -14,6 +14,5 @@ import lombok.Setter;
 @Builder
 public class UpdateProjectMemberRequest {
 
-    @Size(max = 100, message = "Role cannot exceed 100 characters")
-    private String role;
+    private Long roleId;
 }
