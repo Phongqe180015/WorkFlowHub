@@ -26,6 +26,7 @@ public class WorkFlowHubApplication {
         log.info(">>> -------------------------------");
         log.info(">>> Application is running");
         log.info(">>> Port        : {}", env.getProperty("server.port"));
+        log.info(">>> Profile     : {}", env.getProperty("spring.profiles.active"));
         log.info(">>> TimeZone    : {}", TimeZone.getDefault().getID());
         log.info(">>> -------------------------------");
     }
