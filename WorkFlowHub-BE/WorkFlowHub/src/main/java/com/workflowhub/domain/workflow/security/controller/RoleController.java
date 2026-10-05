@@ -10,6 +10,7 @@ import com.workflowhub.domain.workflow.security.dto.response.RoleResponse;
 import com.workflowhub.domain.workflow.security.iservice.IRoleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -33,7 +34,7 @@ public class RoleController extends BaseController {
 
     @GetMapping
     public ApiResponse<PageResponse<RoleResponse>> getPage(
-            @RequestParam(required = false) String search, Pageable pageable) {
+            @RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<RoleResponse> result = roleService.getPage(search, pageable);
         return page(result);
     }

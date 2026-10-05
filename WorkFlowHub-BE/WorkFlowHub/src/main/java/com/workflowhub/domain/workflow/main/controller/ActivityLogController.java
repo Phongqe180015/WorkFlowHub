@@ -10,6 +10,7 @@ import com.workflowhub.domain.workflow.main.dto.response.ActivityLogResponse;
 import com.workflowhub.domain.workflow.main.iservice.IActivityLogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class ActivityLogController extends BaseController {
 
     @GetMapping
     public ApiResponse<PageResponse<ActivityLogResponse>> getPage(
-            @RequestParam(required = false) String search, Pageable pageable) {
+            @RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<ActivityLogResponse> result = service.getPage(search, pageable);
         return page(result);
     }
