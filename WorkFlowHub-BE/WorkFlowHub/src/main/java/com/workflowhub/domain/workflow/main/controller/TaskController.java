@@ -10,6 +10,7 @@ import com.workflowhub.domain.workflow.main.dto.response.TaskResponse;
 import com.workflowhub.domain.workflow.main.iservice.ITaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -32,7 +33,7 @@ public class TaskController extends BaseController {
     private final ITaskService taskService;
 
     @GetMapping
-    public ApiResponse<PageResponse<TaskResponse>> getPage(@RequestParam(required = false) String search, Pageable pageable) {
+    public ApiResponse<PageResponse<TaskResponse>> getPage(@RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<TaskResponse> result = taskService.getPage(search, pageable);
         return page(result);
     }

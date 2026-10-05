@@ -10,6 +10,7 @@ import com.workflowhub.domain.workflow.main.dto.response.ProjectMemberResponse;
 import com.workflowhub.domain.workflow.main.iservice.IProjectMemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class ProjectMemberController extends BaseController {
 
     @GetMapping
     public ApiResponse<PageResponse<ProjectMemberResponse>> getPage(
-            @RequestParam(required = false) String search, Pageable pageable) {
+            @RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<ProjectMemberResponse> result = service.getPage(search, pageable);
         return page(result);
     }

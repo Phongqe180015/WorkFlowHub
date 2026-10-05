@@ -10,6 +10,7 @@ import com.workflowhub.domain.master.dto.response.ProjectResponse;
 import com.workflowhub.domain.master.iservice.IProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,7 +35,7 @@ public class ProjectController extends BaseController {
     private final IProjectService projectService;
 
     @GetMapping
-    public ApiResponse<PageResponse<ProjectResponse>> getPage(@RequestParam(required = false) String search, Pageable pageable) {
+    public ApiResponse<PageResponse<ProjectResponse>> getPage(@RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<ProjectResponse> result = projectService.getPage(search, pageable);
         return page(result);
     }

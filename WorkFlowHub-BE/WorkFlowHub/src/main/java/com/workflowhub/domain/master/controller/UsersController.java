@@ -10,6 +10,7 @@ import com.workflowhub.domain.master.dto.response.UserResponse;
 import com.workflowhub.domain.master.iservice.IUsersService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,7 +35,7 @@ public class UsersController extends BaseController {
     private final IUsersService usersService;
 
     @GetMapping
-    public ApiResponse<PageResponse<UserResponse>> getPage(@RequestParam(required = false) String search, Pageable pageable) {
+    public ApiResponse<PageResponse<UserResponse>> getPage(@RequestParam(required = false) String search,@ParameterObject Pageable pageable) {
         Page<UserResponse> result = usersService.getPage(search, pageable);
         return page(result);
     }
