@@ -14,10 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.workflowhub.common.constant.MessageConstants.EMAIL_ALREADY_EXISTS;
+import static com.workflowhub.common.constant.MessageConstants.USER;
 
 @Service
 @RequiredArgsConstructor
@@ -26,10 +28,10 @@ public class UsersService implements IUsersService {
     private static final RsqlSpecificationBuilder<UsersEntity> RSQL_BUILDER =
             RsqlSpecificationBuilder.forEntity(UsersEntity.class, "password")
                     .build();
-    public static final String USER = "User";
 
     private final IUsersRepository repository;
     private final IUsersMapper usersMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -53,6 +55,7 @@ public class UsersService implements IUsersService {
             throw new ConflictException(EMAIL_ALREADY_EXISTS + request.getEmail());
         }
         UsersEntity entity = usersMapper.toEntity(request);
+        entity.setPassword(passwordEncoder.encode(request.getPassword()));
         UsersEntity saved = repository.save(entity);
         return usersMapper.toResponse(saved);
     }
@@ -70,6 +73,9 @@ public class UsersService implements IUsersService {
         }
 
         usersMapper.updateEntityFromRequest(request, existing);
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            existing.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
         UsersEntity saved = repository.save(existing);
         return usersMapper.toResponse(saved);
     }
