@@ -21,6 +21,5 @@ public class CreateProjectMemberRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
 
-    @Size(max = 100, message = "Role cannot exceed 100 characters")
-    private String role;
+    private Long roleId;
 }

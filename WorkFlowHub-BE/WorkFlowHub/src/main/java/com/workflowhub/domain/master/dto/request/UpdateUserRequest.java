@@ -28,4 +28,6 @@ public class UpdateUserRequest {
     private String avatar;
 
     private String status;
+
+    private Long roleId;
 }

@@ -4,6 +4,7 @@ import com.workflowhub.common.entity.BaseEntity;
 import com.workflowhub.domain.master.entity.ProjectEntity;
 import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.security.entity.RoleEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -39,6 +40,7 @@ public class ProjectMemberEntity extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UsersEntity user;
 
-    @Column(name = "role", length = 100)
-    private String role;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private RoleEntity role;
 }

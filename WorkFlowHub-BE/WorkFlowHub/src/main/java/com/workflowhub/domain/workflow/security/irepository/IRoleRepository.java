@@ -12,4 +12,6 @@ public interface IRoleRepository extends BaseRepository<RoleEntity, Long> {
     Optional<RoleEntity> findByName(String name);
 
     boolean existsByName(String name);
+
+    Optional<RoleEntity> getByName(String role);
 }

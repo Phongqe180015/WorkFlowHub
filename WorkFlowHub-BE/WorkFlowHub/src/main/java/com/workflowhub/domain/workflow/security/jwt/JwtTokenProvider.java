@@ -57,7 +57,10 @@ public class JwtTokenProvider {
     }
 
     public String generateAccessToken(UsersEntity user) {
-        return generateToken(user, accessTokenExpirationMs, List.of(ROLE_USER));
+        String roleName = (user.getRole() != null && user.getRole().getName() != null)
+                ? user.getRole().getName()
+                : ROLE_USER;
+        return generateToken(user, accessTokenExpirationMs, List.of(roleName));
     }
 
     public String generateRefreshToken(UsersEntity user) {

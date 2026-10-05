@@ -10,6 +10,8 @@ import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.master.irepository.IUsersRepository;
 import com.workflowhub.domain.master.iservice.IUsersService;
 import com.workflowhub.domain.master.mapper.IUsersMapper;
+import com.workflowhub.domain.workflow.security.entity.RoleEntity;
+import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +34,7 @@ public class UsersService implements IUsersService {
     private final IUsersRepository repository;
     private final IUsersMapper usersMapper;
     private final PasswordEncoder passwordEncoder;
+    private final IRoleRepository roleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,7 +57,10 @@ public class UsersService implements IUsersService {
         if (repository.existsByEmail(request.getEmail())) {
             throw new ConflictException(EMAIL_ALREADY_EXISTS + request.getEmail());
         }
-        UsersEntity entity = usersMapper.toEntity(request);
+        RoleEntity roleEntity = roleRepository.getByName(USER)
+                .orElseThrow(() -> NotFoundException.of(USER, null));
+
+        UsersEntity entity = usersMapper.toEntity(request, roleEntity.getId());
         entity.setPassword(passwordEncoder.encode(request.getPassword()));
         UsersEntity saved = repository.save(entity);
         return usersMapper.toResponse(saved);
