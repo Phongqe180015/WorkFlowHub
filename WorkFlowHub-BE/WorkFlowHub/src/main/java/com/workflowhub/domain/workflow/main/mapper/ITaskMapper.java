@@ -5,6 +5,7 @@ import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.workflow.main.dto.request.CreateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.request.UpdateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.response.TaskResponse;
+import com.workflowhub.domain.workflow.main.entity.SprintEntity;
 import com.workflowhub.domain.workflow.main.entity.TaskEntity;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -17,10 +18,11 @@ public interface ITaskMapper {
 
     /**
      * CreateTaskRequest → TaskEntity
-     * Long projectId/assigneeId → entity reference proxy
+     * Long projectId/assigneeId/sprintId → entity reference proxy
      */
     @Mapping(target = "project",  expression = "java(projectRef(request.getProjectId()))")
     @Mapping(target = "assignee", expression = "java(userRef(request.getAssigneeId()))")
+    @Mapping(target = "sprint",   expression = "java(sprintRef(request.getSprintId()))")
     TaskEntity toEntity(CreateTaskRequest request);
 
     /**
@@ -31,6 +33,8 @@ public interface ITaskMapper {
     @Mapping(target = "projectName",  source = "project.name")
     @Mapping(target = "assigneeId",   source = "assignee.id")
     @Mapping(target = "assigneeName", source = "assignee.name")
+    @Mapping(target = "sprintId",     source = "sprint.id")
+    @Mapping(target = "sprintName",   source = "sprint.name")
     TaskResponse toResponse(TaskEntity entity);
 
     /**
@@ -39,6 +43,7 @@ public interface ITaskMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "project",  expression = "java(request.getProjectId()  != null ? projectRef(request.getProjectId())  : entity.getProject())")
     @Mapping(target = "assignee", expression = "java(request.getAssigneeId() != null ? userRef(request.getAssigneeId())    : entity.getAssignee())")
+    @Mapping(target = "sprint",   expression = "java(request.getSprintId()   != null ? sprintRef(request.getSprintId())    : entity.getSprint())")
     void updateEntityFromRequest(UpdateTaskRequest request, @MappingTarget TaskEntity entity);
 
     // -----------------------------------------------------------------------
@@ -55,6 +60,13 @@ public interface ITaskMapper {
     default UsersEntity userRef(Long id) {
         if (id == null) return null;
         UsersEntity ref = new UsersEntity();
+        ref.setId(id);
+        return ref;
+    }
+
+    default SprintEntity sprintRef(Long id) {
+        if (id == null) return null;
+        SprintEntity ref = new SprintEntity();
         ref.setId(id);
         return ref;
     }

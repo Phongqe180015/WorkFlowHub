@@ -18,6 +18,8 @@ public class UpdateTaskRequest {
 
     private Long projectId;
 
+    private Long sprintId;
+
     private Long assigneeId;
 
     @Size(max = 255, message = "Title cannot exceed 255 characters")

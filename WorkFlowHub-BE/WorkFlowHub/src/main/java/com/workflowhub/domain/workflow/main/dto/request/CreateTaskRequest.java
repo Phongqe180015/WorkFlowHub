@@ -21,6 +21,8 @@ public class CreateTaskRequest {
     @NotNull(message = "Project ID is required")
     private Long projectId;
 
+    private Long sprintId;
+
     private Long assigneeId;
 
     @NotBlank(message = "Title is required")
