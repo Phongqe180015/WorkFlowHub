@@ -12,14 +12,26 @@ import {
   Check,
   Calendar,
   Layers,
-  Sparkles
+  Sparkles,
+  FolderPlus,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
+import { CreateProjectModal } from '../components/CreateProjectModal';
+import { ProjectService } from '../services/api';
+import type { Project } from '../types';
 
-export const UserDashboard: React.FC = () => {
+interface UserDashboardProps {
+  onGoToProjectManager?: (projectId?: number) => void;
+}
+
+export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManager }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'myTasks' | 'myProjects' | 'activities'>('myTasks');
   const [taskFilter, setTaskFilter] = useState<'ALL' | 'TO_DO' | 'IN_PROGRESS' | 'DONE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [createdProjectNotification, setCreatedProjectNotification] = useState<string | null>(null);
   
   // Danh sách công việc cá nhân
   const [tasks, setTasks] = useState(mockTasks);
@@ -31,27 +43,61 @@ export const UserDashboard: React.FC = () => {
     { id: 'activities', label: 'Hoạt động gần đây', icon: Activity },
   ];
 
-  // Projects list
-  const userProjects = [
-    {
-      id: 1,
-      name: 'Hệ thống Quản lý Sprint WorkFlowHub',
-      description: 'Nền tảng phân phối và theo dõi tiến độ sprint tinh gọn cho đội ngũ phát triển.',
-      membersCount: 8,
-      progress: 68,
-      activeSprint: 'Sprint 32 - Hoàn thiện MVP',
-      roleInProject: 'Thành viên đóng góp',
-    },
-    {
-      id: 2,
-      name: 'Dịch vụ Thông báo & Tích hợp Kafka',
-      description: 'Hạ tầng gửi email, thông báo real-time qua WebSocket và Kafka queue.',
-      membersCount: 4,
-      progress: 45,
-      activeSprint: 'Sprint 14 - Kafka Broker Integration',
-      roleInProject: 'Thành viên kỹ thuật',
-    },
-  ];
+  // Projects list (100% dữ liệu thực từ backend)
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // Load real projects from backend
+  React.useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      try {
+        const remoteProjects = await ProjectService.getProjects();
+        if (remoteProjects) {
+          const formatted = remoteProjects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description || 'Chưa có mô tả dự án',
+            membersCount: 1,
+            progress: 0,
+            activeSprint: 'Chưa có sprint',
+            roleInProject: p.ownerId === user?.id ? 'Project Manager (Quản lý)' : 'Thành viên',
+            ownerId: p.ownerId,
+          }));
+          setProjectsList(formatted);
+        }
+      } catch (err) {
+        console.warn('Could not load remote projects:', err);
+        setProjectsList([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, [user?.id]);
+
+  const handleProjectCreated = (newProject: Project) => {
+    const projectItem = {
+      id: newProject.id,
+      name: newProject.name,
+      description: newProject.description || 'Chưa có mô tả dự án',
+      membersCount: 1,
+      progress: 0,
+      activeSprint: 'Chưa bắt đầu sprint',
+      roleInProject: 'Project Manager (Chủ dự án)',
+      ownerId: newProject.ownerId,
+    };
+    setProjectsList((prev) => [projectItem, ...prev]);
+    setCreatedProjectNotification(
+      `Đã tạo thành công dự án "${newProject.name}"! Bạn đã được cấp quyền Project Manager.`
+    );
+    // Tự động chuyển qua view Quản lý dự án sau 1.2s nếu có prop
+    if (onGoToProjectManager) {
+      setTimeout(() => {
+        onGoToProjectManager(newProject.id);
+      }, 1200);
+    }
+  };
 
   const handleToggleTask = (taskId: number) => {
     setTasks((prev) =>
@@ -118,7 +164,14 @@ export const UserDashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsCreateProjectOpen(true)}
+              className="px-4 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <FolderPlus size={16} className="text-emerald-600" />
+              <span>Tạo dự án mới</span>
+            </button>
             <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center">
               <div className="text-[11px] text-emerald-100">Vai trò hệ thống</div>
               <div className="text-sm font-bold text-white uppercase tracking-wider">
@@ -127,11 +180,29 @@ export const UserDashboard: React.FC = () => {
             </div>
             <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center">
               <div className="text-[11px] text-emerald-100">Dự án tham gia</div>
-              <div className="text-sm font-bold text-white">2</div>
+              <div className="text-sm font-bold text-white">{projectsList.length}</div>
             </div>
           </div>
         </div>
       </div>
+
+      {createdProjectNotification && (
+        <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-emerald-900 text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Sparkles size={18} className="text-emerald-600 shrink-0" />
+            <span className="font-semibold">{createdProjectNotification}</span>
+          </div>
+          {onGoToProjectManager && (
+            <button
+              onClick={() => onGoToProjectManager()}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs shrink-0"
+            >
+              <span>Vào trang Quản lý dự án</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Metric KPI Cards (4 cards) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -384,52 +455,107 @@ export const UserDashboard: React.FC = () => {
           {activeTab === 'myProjects' && (
             <div className="space-y-4">
               <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
-                <h2 className="text-lg font-bold text-gray-900">Dự án tham gia</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Các dự án nhóm bạn được phân công tham gia thực hiện.
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                  {userProjects.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-5 rounded-2xl border border-gray-100 hover:border-emerald-200 bg-white hover:shadow-xs transition-all space-y-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                          <FolderKanban size={20} />
-                        </div>
-                        <span className="px-2.5 py-1 text-[10px] font-semibold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-100">
-                          {p.roleInProject}
-                        </span>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900">{p.name}</h3>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                          {p.description}
-                        </p>
-                      </div>
-
-                      <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500 font-medium">Tiến độ dự án</span>
-                          <span className="font-bold text-emerald-700">{p.progress}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-600 rounded-full transition-all"
-                            style={{ width: `${p.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      <div className="text-[11px] text-gray-400">
-                        Sprint hiện tại: <span className="font-medium text-gray-700">{p.activeSprint}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Dự án tham gia & Quản lý</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Danh sách các dự án bạn đang tham gia đóng góp hoặc đóng vai trò Project Manager.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateProjectOpen(true)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
+                  >
+                    <FolderPlus size={15} />
+                    <span>Tạo dự án mới</span>
+                  </button>
                 </div>
+
+                {loadingProjects ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
+                    <Loader2 size={24} className="animate-spin text-emerald-600" />
+                    <span>Đang tải danh sách dự án...</span>
+                  </div>
+                ) : projectsList.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-gray-400 space-y-3 border-2 border-dashed border-gray-100 rounded-2xl">
+                    <p>Bạn chưa tham gia hoặc tạo dự án nào.</p>
+                    <button
+                      onClick={() => setIsCreateProjectOpen(true)}
+                      className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold cursor-pointer"
+                    >
+                      + Bấm vào đây để tạo dự án đầu tiên
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {projectsList.map((p) => {
+                      const isOwner = p.ownerId === user?.id || (p.roleInProject && p.roleInProject.includes('Project Manager'));
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => onGoToProjectManager && onGoToProjectManager(p.id)}
+                          className="p-5 rounded-2xl border border-gray-100 hover:border-emerald-300 bg-white hover:shadow-md transition-all space-y-4 flex flex-col justify-between cursor-pointer group"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:bg-emerald-100 transition-colors">
+                                <FolderKanban size={20} />
+                              </div>
+                              <span
+                                className={`px-2.5 py-1 text-[10px] font-semibold rounded-md border ${
+                                  isOwner
+                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                                    : 'bg-gray-100 text-gray-700 border-gray-200'
+                                }`}
+                              >
+                                {p.roleInProject}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">{p.name}</h3>
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {p.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 pt-3 border-t border-gray-100">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500 font-medium">Tiến độ dự án</span>
+                                <span className="font-bold text-emerald-700">{p.progress}%</span>
+                              </div>
+                              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-600 rounded-full transition-all"
+                                  style={{ width: `${p.progress}%` }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] text-gray-400">
+                              <span>Sprint: <strong className="text-gray-700 font-medium">{p.activeSprint}</strong></span>
+                              {isOwner && onGoToProjectManager && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onGoToProjectManager(p.id);
+                                  }}
+                                  className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>Quản lý dự án</span>
+                                  <ArrowRight size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -463,6 +589,13 @@ export const UserDashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modal Tạo Dự Án Mới */}
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onSuccess={handleProjectCreated}
+      />
     </div>
   );
 };

@@ -51,26 +51,85 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
-  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'REVIEW';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'REVIEW' | string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | string;
   category?: string;
+  assigneeId?: number | null;
   assigneeName?: string;
   assigneeAvatar?: string;
+  sprintId?: number | null;
+  sprintName?: string;
   progress?: number;
   dueDate?: string;
   projectId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateTaskPayload {
+  projectId: number;
+  sprintId?: number | null;
+  assigneeId?: number | null;
+  title: string;
+  description?: string;
+  priority?: string;
+  status?: string;
+  dueDate?: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProjectMember {
+  projectId: number;
+  projectName?: string;
+  userId: number;
+  userName?: string;
+  userEmail?: string;
+  roleId?: number;
+  roleName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateProjectPayload {
+  name: string;
+  description?: string;
+  ownerId: number;
+}
+
+export interface CreateProjectMemberPayload {
+  projectId: number;
+  userId: number;
+  roleId?: number;
+}
+
+export interface CreateSprintPayload {
+  projectId: number;
+  name: string;
+  goal?: string;
+  startDate: string;
+  endDate: string;
+  status: string;
 }
 
 export interface Sprint {
   id: number;
+  projectId?: number;
   name: string;
   goal?: string;
   status: string;
-  progressPercent: number;
-  totalTasks: number;
-  daysRemaining: number;
+  progressPercent?: number;
+  totalTasks?: number;
+  daysRemaining?: number;
   startDate?: string;
   endDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ActivityLog {

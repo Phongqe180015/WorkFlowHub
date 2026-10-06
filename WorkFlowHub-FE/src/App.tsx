@@ -12,6 +12,7 @@ import { ViewerDashboard } from './pages/ViewerDashboard';
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>('home');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
@@ -22,26 +23,48 @@ const MainApp: React.FC = () => {
     setAuthModalOpen(true);
   };
 
+  const handleOpenProjectManager = (projectId?: number) => {
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
+    setCurrentRole('PROJECT_MANAGER');
+    setCurrentPage('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleGoToDashboard = (targetRole?: RoleType) => {
     if (targetRole) {
       setCurrentRole(targetRole);
     } else if (isAuthenticated && user) {
       const normalizedRole = (user.roleName || user.role || 'USER').toUpperCase();
-      setCurrentRole(normalizedRole === 'ADMIN' ? 'ADMIN' : 'USER');
+      if (normalizedRole === 'ADMIN') {
+        setCurrentRole('ADMIN');
+      } else if (currentRole === 'PROJECT_MANAGER') {
+        setCurrentRole('PROJECT_MANAGER');
+      } else {
+        setCurrentRole('USER');
+      }
     }
     setCurrentPage('dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderDashboardByRole = () => {
-    // 1. Phân quyền khi đã đăng nhập (Dựa trên roleName từ backend)
+    // 1. Phân quyền khi đã đăng nhập (Dựa trên roleName hoặc currentRole)
     if (isAuthenticated && user) {
-      const normalizedRole = (user.roleName || user.role || '').toUpperCase();
-      if (normalizedRole === 'ADMIN') {
+      const activeRole = (currentRole || user.roleName || user.role || 'USER').toUpperCase();
+      if (activeRole === 'ADMIN') {
         return <AdminDashboard />;
       }
-      // Không phải admin -> toàn bộ user đều vào UserDashboard
-      return <UserDashboard />;
+      if (activeRole === 'PROJECT_MANAGER') {
+        return (
+          <ProjectManagerDashboard 
+            initialProjectId={selectedProjectId}
+            onSwitchToUserView={() => setCurrentRole('USER')} 
+          />
+        );
+      }
+      return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
     }
 
     // 2. Chế độ xem trước (Preview demo)
@@ -49,15 +72,20 @@ const MainApp: React.FC = () => {
       case 'ADMIN':
         return <AdminDashboard />;
       case 'USER':
-        return <UserDashboard />;
+        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
       case 'PROJECT_MANAGER':
-        return <ProjectManagerDashboard />;
+        return (
+          <ProjectManagerDashboard 
+            initialProjectId={selectedProjectId}
+            onSwitchToUserView={() => setCurrentRole('USER')} 
+          />
+        );
       case 'DEVELOPER':
         return <DeveloperDashboard />;
       case 'VIEWER':
         return <ViewerDashboard />;
       default:
-        return <UserDashboard />;
+        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
     }
   };
 

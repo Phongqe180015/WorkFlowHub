@@ -19,8 +19,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
   ];
 
   // Xác định role hiển thị
-  const effectiveRole = isAuthenticated && user 
-    ? ((user.roleName || user.role || 'USER').toUpperCase() === 'ADMIN' ? 'ADMIN' : 'USER')
+  const effectiveRole: RoleType = isAuthenticated && user 
+    ? (currentRole || ((user.roleName || user.role || 'USER').toUpperCase() as RoleType))
     : currentRole;
 
   const currentRoleObj = roles.find((r) => r.id === effectiveRole) || roles[1];
