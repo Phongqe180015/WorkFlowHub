@@ -9,6 +9,10 @@ import com.workflowhub.domain.master.entity.ProjectEntity;
 import com.workflowhub.domain.master.iservice.IProjectService;
 import com.workflowhub.domain.master.mapper.IProjectMapper;
 import com.workflowhub.domain.master.irepository.IProjectRepository;
+import com.workflowhub.domain.workflow.main.dto.request.CreateProjectMemberRequest;
+import com.workflowhub.domain.workflow.main.iservice.IProjectMemberService;
+import com.workflowhub.domain.workflow.security.entity.RoleEntity;
+import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,9 +30,12 @@ public class ProjectService implements IProjectService {
                     .build();
 
     public static final String PROJECT = "Project";
+    public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
 
     private final IProjectRepository repository;
     private final IProjectMapper projectMapper;
+    private final IProjectMemberService projectMemberService;
+    private final IRoleRepository roleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -49,7 +56,10 @@ public class ProjectService implements IProjectService {
     @Transactional
     public ProjectResponse createProject(CreateProjectRequest request) {
         ProjectEntity entity = projectMapper.toEntity(request);
+        RoleEntity roleEntity = roleRepository.findByName(PROJECT_MANAGER)
+                .orElseThrow(() -> NotFoundException.of(PROJECT_MANAGER, null));
         ProjectEntity saved = repository.save(entity);
+        projectMemberService.create(new CreateProjectMemberRequest(saved.getId(), saved.getOwner().getId(), roleEntity.getId()));
         return projectMapper.toResponse(saved);
     }
 
