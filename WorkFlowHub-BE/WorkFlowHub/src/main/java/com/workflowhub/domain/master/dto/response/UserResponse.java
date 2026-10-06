@@ -21,6 +21,7 @@ public class UserResponse {
     private String avatar;
     private String status;
     private Long roleId;
+    private String roleName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
