@@ -18,6 +18,7 @@ public interface IUsersMapper {
     UsersEntity toEntity(CreateUserRequest request, Long roleId);
 
     @Mapping(target = "roleId", source = "role.id")
+    @Mapping(target = "roleName", source = "role.name")
     UserResponse toResponse(UsersEntity entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
