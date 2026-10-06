@@ -28,6 +28,10 @@ public class TaskEntity extends BaseEntity {
     private ProjectEntity project;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sprint_id", nullable = true)
+    private SprintEntity sprint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id", nullable = true)
     private UsersEntity assignee;
 

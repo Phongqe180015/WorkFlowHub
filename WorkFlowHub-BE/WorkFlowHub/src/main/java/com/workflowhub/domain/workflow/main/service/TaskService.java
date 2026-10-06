@@ -24,6 +24,7 @@ public class TaskService implements ITaskService {
             RsqlSpecificationBuilder.forEntity(TaskEntity.class)
                     .field("projectId",  "project.id",  Long.class)   // ManyToOne dot-path
                     .field("assigneeId", "assignee.id", Long.class)   // ManyToOne dot-path
+                    .field("sprintId",   "sprint.id",   Long.class)   // ManyToOne dot-path
                     .build();
 
     public static final String TASK = "Task";
