@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, Loader2 } from 'lucide-react';
 
 interface NavbarProps {
   onNavigate: (page: string) => void;
@@ -10,6 +10,19 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenRegister }) => {
   const { isAuthenticated, user, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      onNavigate('home');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
@@ -51,11 +64,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
                 <span>{user.name}</span>
               </button>
               <button
-                onClick={logout}
+                onClick={handleLogout}
+                disabled={loggingOut}
                 title="Đăng xuất"
-                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <LogOut size={16} />
+                {loggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+                <span>Đăng xuất</span>
               </button>
             </div>
           ) : (

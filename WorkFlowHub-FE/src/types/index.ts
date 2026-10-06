@@ -1,5 +1,7 @@
 export interface ApiResponse<T> {
-  status: string;
+  success?: boolean;
+  status?: string;
+  code?: string;
   message?: string;
   data: T;
   timestamp: string;
@@ -18,9 +20,11 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  avatar?: string;
+  avatar?: string | null;
   status: string;
   role?: string;
+  roleId?: number;
+  roleName?: string;
   createdAt?: string;
   updatedAt?: string;
 }

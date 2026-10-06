@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
 import { AuthService } from '../services/api';
 
-export type RoleType = 'ADMIN' | 'PROJECT_MANAGER' | 'DEVELOPER' | 'VIEWER';
+export type RoleType = 'ADMIN' | 'USER' | 'PROJECT_MANAGER' | 'DEVELOPER' | 'VIEWER';
 
 interface AuthContextType {
   user: User | null;
@@ -12,29 +12,44 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('workflowhub_token');
+  });
+
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('workflowhub_user');
-    return saved ? JSON.parse(saved) : {
-      id: 1,
-      name: 'Minh Trần',
-      email: 'minh@workflowhub.vn',
-      role: 'ADMIN',
-      status: 'active',
-      avatar: 'MI',
-    };
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
 
   const [currentRole, setCurrentRole] = useState<RoleType>(() => {
-    return (localStorage.getItem('workflowhub_role') as RoleType) || 'ADMIN';
-  });
-
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('workflowhub_token');
+    const savedRole = localStorage.getItem('workflowhub_role');
+    if (savedRole) {
+      return savedRole as RoleType;
+    }
+    const savedUser = localStorage.getItem('workflowhub_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        const rawRole = (parsed.roleName || parsed.role || 'USER').toUpperCase();
+        return rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
+      } catch {
+        // ignore
+      }
+    }
+    return 'USER';
   });
 
   useEffect(() => {
@@ -44,11 +59,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    if (newUser.role) {
-      setCurrentRole(newUser.role as RoleType);
-    }
+
+    // Lấy roleName từ backend (ví dụ: 'Admin' hoặc 'User')
+    const rawRole = (newUser.roleName || newUser.role || 'USER').toUpperCase();
+    const normalizedRole: RoleType = rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
+
+    setCurrentRole(normalizedRole);
     localStorage.setItem('workflowhub_token', newToken);
     localStorage.setItem('workflowhub_user', JSON.stringify(newUser));
+    localStorage.setItem('workflowhub_role', normalizedRole);
   };
 
   const logout = async () => {
@@ -59,10 +78,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setToken(null);
       setUser(null);
+      setCurrentRole('USER');
       localStorage.removeItem('workflowhub_token');
+      localStorage.removeItem('workflowhub_refresh_token');
       localStorage.removeItem('workflowhub_user');
+      localStorage.removeItem('workflowhub_role');
     }
   };
+
+  const isAdmin = (user?.roleName || currentRole || '').toUpperCase() === 'ADMIN';
 
   return (
     <AuthContext.Provider
@@ -73,7 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         login,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: !!token && !!user,
+        isAdmin,
       }}
     >
       {children}
