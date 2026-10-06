@@ -1,4 +1,18 @@
-import type { ApiResponse, AuthResponse, User } from '../types';
+import type { 
+  ApiResponse, 
+  AuthResponse, 
+  User, 
+  PageResponse, 
+  Project, 
+  ProjectMember, 
+  Sprint, 
+  Role, 
+  CreateProjectPayload, 
+  CreateProjectMemberPayload, 
+  CreateSprintPayload,
+  Task,
+  CreateTaskPayload
+} from '../types';
 
 const ENV_API_URL = import.meta.env.VITE_API_URL;
 const BASE_URL = ENV_API_URL ? `${ENV_API_URL.replace(/\/$/, '')}/api/v1` : '/api/v1';
@@ -112,8 +126,6 @@ export const AuthService = {
     } catch (error) {
       console.warn('API logout failed on server, clearing client session anyway:', error);
       return {
-        status: 'error',
-        message: 'Logout API error',
         data: undefined as unknown as void,
         timestamp: new Date().toISOString(),
       };
@@ -129,3 +141,231 @@ export const AuthService = {
     return ApiClient.post<ApiResponse<AuthResponse>>('/auth/refresh-token', { refreshToken });
   },
 };
+
+export const RoleService = {
+  /**
+   * GET /api/v1/roles
+   */
+  async getRoles(page = 0, size = 100): Promise<Role[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Role>>>(`/roles?page=${page}&size=${size}`);
+      const content = res.data?.content || (Array.isArray(res.data) ? res.data : []);
+      return content;
+    } catch (err) {
+      console.warn('Failed to fetch roles from API, using fallback roles:', err);
+      return [
+        { id: 1, name: 'ADMIN' },
+        { id: 2, name: 'User' },
+        { id: 3, name: 'PROJECT_MANAGER' },
+        { id: 4, name: 'DEVELOPER' },
+        { id: 5, name: 'TESTER' },
+        { id: 6, name: 'VIEWER' },
+      ];
+    }
+  },
+
+  /**
+   * Lọc và ẩn 2 role: USER và ADMIN
+   */
+  filterAssignableRoles(roles: Role[]): Role[] {
+    return roles.filter((r) => {
+      const name = (r.name || '').trim().toUpperCase();
+      return name !== 'USER' && name !== 'ADMIN';
+    });
+  },
+};
+
+export const ProjectService = {
+  /**
+   * GET /api/v1/projects
+   */
+  async getProjects(search?: string, page = 0, size = 50): Promise<Project[]> {
+    try {
+      const query = search ? `?search=${encodeURIComponent(search)}&page=${page}&size=${size}` : `?page=${page}&size=${size}`;
+      const res = await ApiClient.get<ApiResponse<PageResponse<Project>>>(`/projects${query}`);
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn('Failed to fetch projects:', err);
+      return [];
+    }
+  },
+
+  /**
+   * GET /api/v1/projects/{id}
+   */
+  async getProjectById(id: number): Promise<Project> {
+    const res = await ApiClient.get<ApiResponse<Project>>(`/projects/${id}`);
+    return res.data;
+  },
+
+  /**
+   * POST /api/v1/projects
+   */
+  async createProject(payload: CreateProjectPayload): Promise<Project> {
+    const res = await ApiClient.post<ApiResponse<Project>>('/projects', payload);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/projects/{id}
+   */
+  async updateProject(id: number, payload: Partial<CreateProjectPayload>): Promise<Project> {
+    const res = await ApiClient.put<ApiResponse<Project>>(`/projects/${id}`, payload);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/projects/{id}
+   */
+  async deleteProject(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/projects/${id}`);
+  },
+};
+
+export const ProjectMemberService = {
+  /**
+   * GET /api/v1/project-members?search=projectId=={id}
+   */
+  async getMembersByProjectId(projectId: number): Promise<ProjectMember[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<ProjectMember>>>(
+        `/project-members?search=projectId==${projectId}&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch members for projectId=${projectId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/v1/project-members
+   */
+  async addMember(payload: CreateProjectMemberPayload): Promise<ProjectMember> {
+    const res = await ApiClient.post<ApiResponse<ProjectMember>>('/project-members', payload);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/project-members/projects/{projectId}/users/{userId}
+   */
+  async updateMemberRole(projectId: number, userId: number, roleId: number): Promise<ProjectMember> {
+    const res = await ApiClient.put<ApiResponse<ProjectMember>>(
+      `/project-members/projects/${projectId}/users/${userId}`,
+      { roleId }
+    );
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/project-members/projects/{projectId}/users/{userId}
+   */
+  async removeMember(projectId: number, userId: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/project-members/projects/${projectId}/users/${userId}`);
+  },
+};
+
+export const SprintService = {
+  /**
+   * GET /api/v1/sprints?search=projectId=={id}
+   */
+  async getSprintsByProjectId(projectId: number): Promise<Sprint[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Sprint>>>(
+        `/sprints?search=projectId==${projectId}&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch sprints for projectId=${projectId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/v1/sprints
+   */
+  async createSprint(payload: CreateSprintPayload): Promise<Sprint> {
+    const res = await ApiClient.post<ApiResponse<Sprint>>('/sprints', payload);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/sprints/{id}
+   */
+  async updateSprint(id: number, payload: Partial<CreateSprintPayload>): Promise<Sprint> {
+    const res = await ApiClient.put<ApiResponse<Sprint>>(`/sprints/${id}`, payload);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/sprints/{id}
+   */
+  async deleteSprint(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/sprints/${id}`);
+  },
+};
+
+export const UserService = {
+  /**
+   * GET /api/v1/users
+   */
+  async getUsers(search?: string, page = 0, size = 100): Promise<User[]> {
+    try {
+      const query = search ? `?search=${encodeURIComponent(search)}&page=${page}&size=${size}` : `?page=${page}&size=${size}`;
+      const res = await ApiClient.get<ApiResponse<PageResponse<User>>>(`/users${query}`);
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn('Failed to fetch users:', err);
+      return [];
+    }
+  },
+
+  /**
+   * PUT /api/v1/users/{id}
+   */
+  async updateUserRole(id: number, roleId: number): Promise<User> {
+    const res = await ApiClient.put<ApiResponse<User>>(`/users/${id}`, { roleId });
+    return res.data;
+  },
+};
+
+export const TaskService = {
+  /**
+   * GET /api/v1/tasks?search=projectId=={id}
+   */
+  async getTasksByProjectId(projectId: number): Promise<Task[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
+        `/tasks?search=projectId==${projectId}&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch tasks for projectId=${projectId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/v1/tasks
+   */
+  async createTask(payload: CreateTaskPayload): Promise<Task> {
+    const res = await ApiClient.post<ApiResponse<Task>>('/tasks', payload);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/tasks/{id}
+   */
+  async updateTask(id: number, payload: Partial<CreateTaskPayload>): Promise<Task> {
+    const res = await ApiClient.put<ApiResponse<Task>>(`/tasks/${id}`, payload);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/tasks/{id}
+   */
+  async deleteTask(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/tasks/${id}`);
+  },
+};
+
