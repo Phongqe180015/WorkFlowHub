@@ -5,6 +5,7 @@ import { DashboardHeader } from './components/DashboardHeader';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './pages/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { UserDashboard } from './pages/UserDashboard';
 import { ProjectManagerDashboard } from './pages/ProjectManagerDashboard';
 import { DeveloperDashboard } from './pages/DeveloperDashboard';
 import { ViewerDashboard } from './pages/ViewerDashboard';
@@ -14,7 +15,7 @@ const MainApp: React.FC = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
-  const { currentRole, setCurrentRole } = useAuth();
+  const { currentRole, setCurrentRole, user, isAuthenticated } = useAuth();
 
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);
@@ -24,15 +25,31 @@ const MainApp: React.FC = () => {
   const handleGoToDashboard = (targetRole?: RoleType) => {
     if (targetRole) {
       setCurrentRole(targetRole);
+    } else if (isAuthenticated && user) {
+      const normalizedRole = (user.roleName || user.role || 'USER').toUpperCase();
+      setCurrentRole(normalizedRole === 'ADMIN' ? 'ADMIN' : 'USER');
     }
     setCurrentPage('dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderDashboardByRole = () => {
+    // 1. Phân quyền khi đã đăng nhập (Dựa trên roleName từ backend)
+    if (isAuthenticated && user) {
+      const normalizedRole = (user.roleName || user.role || '').toUpperCase();
+      if (normalizedRole === 'ADMIN') {
+        return <AdminDashboard />;
+      }
+      // Không phải admin -> toàn bộ user đều vào UserDashboard
+      return <UserDashboard />;
+    }
+
+    // 2. Chế độ xem trước (Preview demo)
     switch (currentRole) {
       case 'ADMIN':
         return <AdminDashboard />;
+      case 'USER':
+        return <UserDashboard />;
       case 'PROJECT_MANAGER':
         return <ProjectManagerDashboard />;
       case 'DEVELOPER':
@@ -40,7 +57,7 @@ const MainApp: React.FC = () => {
       case 'VIEWER':
         return <ViewerDashboard />;
       default:
-        return <AdminDashboard />;
+        return <UserDashboard />;
     }
   };
 

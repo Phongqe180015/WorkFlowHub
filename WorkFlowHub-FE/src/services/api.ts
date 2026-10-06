@@ -14,7 +14,9 @@ export class ApiClient {
 
   public static removeToken() {
     localStorage.removeItem('workflowhub_token');
+    localStorage.removeItem('workflowhub_refresh_token');
     localStorage.removeItem('workflowhub_user');
+    localStorage.removeItem('workflowhub_role');
   }
 
   public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -47,7 +49,11 @@ export class ApiClient {
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+    return {} as T;
   }
 
   public static get<T>(endpoint: string) {
@@ -82,6 +88,9 @@ export const AuthService = {
     const res = await ApiClient.post<ApiResponse<AuthResponse>>('/auth/login', credentials);
     if (res.data?.accessToken) {
       ApiClient.setToken(res.data.accessToken);
+      if (res.data.refreshToken) {
+        localStorage.setItem('workflowhub_refresh_token', res.data.refreshToken);
+      }
       localStorage.setItem('workflowhub_user', JSON.stringify(res.data.user));
     }
     return res;
@@ -99,11 +108,18 @@ export const AuthService = {
    */
   async logout(): Promise<ApiResponse<void>> {
     try {
-      await ApiClient.post<ApiResponse<void>>('/auth/logout');
+      return await ApiClient.post<ApiResponse<void>>('/auth/logout');
+    } catch (error) {
+      console.warn('API logout failed on server, clearing client session anyway:', error);
+      return {
+        status: 'error',
+        message: 'Logout API error',
+        data: undefined as unknown as void,
+        timestamp: new Date().toISOString(),
+      };
     } finally {
       ApiClient.removeToken();
     }
-    return { status: 'success', data: undefined, timestamp: new Date().toISOString() };
   },
 
   /**

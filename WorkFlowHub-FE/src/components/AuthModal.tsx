@@ -162,7 +162,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               id: 99,
               name: 'Google User',
               email: 'user@workflowhub.vn',
-              role: 'DEVELOPER',
+              roleName: 'User',
+              role: 'USER',
               status: 'active',
               avatar: 'GG',
             });
