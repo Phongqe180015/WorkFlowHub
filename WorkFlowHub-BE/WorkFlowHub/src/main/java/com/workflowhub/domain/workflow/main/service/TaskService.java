@@ -10,6 +10,7 @@ import com.workflowhub.domain.workflow.main.irepository.ITaskRepository;
 import com.workflowhub.domain.workflow.main.iservice.ITaskService;
 import com.workflowhub.domain.workflow.main.mapper.ITaskMapper;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -25,6 +26,9 @@ public class TaskService implements ITaskService {
                     .field("projectId",  "project.id",  Long.class)   // ManyToOne dot-path
                     .field("assigneeId", "assignee.id", Long.class)   // ManyToOne dot-path
                     .field("sprintId",   "sprint.id",   Long.class)   // ManyToOne dot-path
+                    .field("taskCode",   "taskCode",    String.class)
+                    .field("status",     "status",      String.class)
+                    .field("isDeleted",  "isDeleted",   Boolean.class)
                     .build();
 
     public static final String TASK = "Task";
@@ -35,7 +39,13 @@ public class TaskService implements ITaskService {
     @Override
     @Transactional(readOnly = true)
     public Page<TaskResponse> getPage(String search, Pageable pageable) {
-        Specification<TaskEntity> spec = RSQL_BUILDER.parse(search);
+        String effectiveSearch = search;
+        if (effectiveSearch == null || !effectiveSearch.contains("isDeleted")) {
+            effectiveSearch = (effectiveSearch == null || effectiveSearch.isBlank())
+                    ? "isDeleted==false"
+                    : effectiveSearch + ";isDeleted==false";
+        }
+        Specification<TaskEntity> spec = RSQL_BUILDER.parse(effectiveSearch);
         return repository.findAll(spec, pageable).map(taskMapper::toResponse);
     }
 
@@ -51,6 +61,12 @@ public class TaskService implements ITaskService {
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request) {
         TaskEntity entity = taskMapper.toEntity(request);
+        if (ObjectUtils.isEmpty(entity.getIsDeleted())) {
+            entity.setIsDeleted(false);
+        }
+        if (ObjectUtils.isEmpty(entity.getTaskCode()) || entity.getTaskCode().isBlank()) {
+            entity.setTaskCode("TASK-" + (System.currentTimeMillis() % 100000));
+        }
         TaskEntity saved = repository.save(entity);
         return taskMapper.toResponse(saved);
     }
@@ -68,6 +84,25 @@ public class TaskService implements ITaskService {
     @Override
     @Transactional
     public void deleteTask(Long id) {
+        TaskEntity existing = repository.findById(id)
+                .orElseThrow(() -> NotFoundException.of(TASK, id));
+        existing.setIsDeleted(true);
+        repository.save(existing);
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse restoreTask(Long id) {
+        TaskEntity existing = repository.findById(id)
+                .orElseThrow(() -> NotFoundException.of(TASK, id));
+        existing.setIsDeleted(false);
+        TaskEntity saved = repository.save(existing);
+        return taskMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void permanentDeleteTask(Long id) {
         if (!repository.existsById(id)) {
             throw NotFoundException.of(TASK, id);
         }

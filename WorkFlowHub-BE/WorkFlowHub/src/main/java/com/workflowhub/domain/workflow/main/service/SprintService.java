@@ -1,11 +1,16 @@
 package com.workflowhub.domain.workflow.main.service;
 
+import com.workflowhub.common.enums.RoleEnums;
+import com.workflowhub.common.exception.ForbiddenException;
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
+import com.workflowhub.common.util.SecurityUtils;
 import com.workflowhub.domain.workflow.main.dto.request.CreateSprintRequest;
 import com.workflowhub.domain.workflow.main.dto.request.UpdateSprintRequest;
 import com.workflowhub.domain.workflow.main.dto.response.SprintResponse;
 import com.workflowhub.domain.workflow.main.entity.SprintEntity;
+import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.main.irepository.IProjectMemberRepository;
 import com.workflowhub.domain.workflow.main.irepository.ISprintRepository;
 import com.workflowhub.domain.workflow.main.iservice.ISprintService;
 import com.workflowhub.domain.workflow.main.mapper.ISprintMapper;
@@ -33,6 +38,7 @@ public class SprintService implements ISprintService {
 
     private final ISprintRepository repository;
     private final ISprintMapper mapper;
+    private final IProjectMemberRepository projectMemberRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -61,6 +67,17 @@ public class SprintService implements ISprintService {
     public SprintResponse update(Long id, UpdateSprintRequest request) {
         SprintEntity entity = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(SPRINT, id));
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Long projectId = entity.getProject().getId();
+        boolean isPM = projectMemberRepository.findById(new ProjectMemberId(projectId, currentUserId))
+                .map(pm -> pm.getRole() != null && RoleEnums.PROJECT_MANAGER.matches(pm.getRole().getName()))
+                .orElse(false)
+                || (entity.getProject().getOwner() != null && entity.getProject().getOwner().getId().equals(currentUserId));
+        if (!isPM) {
+            throw new ForbiddenException("Chỉ Project Manager của dự án mới có quyền cập nhật Sprint");
+        }
+
         mapper.updateEntityFromRequest(request, entity);
         return mapper.toResponse(repository.save(entity));
     }

@@ -59,4 +59,15 @@ public class TaskController extends BaseController {
         taskService.deleteTask(id);
         return noContent();
     }
+
+    @PutMapping("/{id}/restore")
+    public ApiResponse<TaskResponse> restore(@PathVariable Long id) {
+        return success(taskService.restoreTask(id));
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public ApiResponse<Void> permanentDelete(@PathVariable Long id) {
+        taskService.permanentDeleteTask(id);
+        return noContent();
+    }
 }

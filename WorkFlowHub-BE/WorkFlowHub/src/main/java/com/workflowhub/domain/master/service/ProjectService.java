@@ -14,6 +14,7 @@ import com.workflowhub.domain.workflow.main.iservice.IProjectMemberService;
 import com.workflowhub.domain.workflow.security.entity.RoleEntity;
 import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import lombok.RequiredArgsConstructor;
+import com.workflowhub.common.enums.RoleEnums;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,7 +31,6 @@ public class ProjectService implements IProjectService {
                     .build();
 
     public static final String PROJECT = "Project";
-    public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
 
     private final IProjectRepository repository;
     private final IProjectMapper projectMapper;
@@ -56,8 +56,9 @@ public class ProjectService implements IProjectService {
     @Transactional
     public ProjectResponse createProject(CreateProjectRequest request) {
         ProjectEntity entity = projectMapper.toEntity(request);
-        RoleEntity roleEntity = roleRepository.findByName(PROJECT_MANAGER)
-                .orElseThrow(() -> NotFoundException.of(PROJECT_MANAGER, null));
+        String roleName = RoleEnums.PROJECT_MANAGER.getRoleName();
+        RoleEntity roleEntity = roleRepository.findByName(roleName)
+                .orElseThrow(() -> NotFoundException.of(roleName, null));
         ProjectEntity saved = repository.save(entity);
         projectMemberService.create(new CreateProjectMemberRequest(saved.getId(), saved.getOwner().getId(), roleEntity.getId()));
         return projectMapper.toResponse(saved);

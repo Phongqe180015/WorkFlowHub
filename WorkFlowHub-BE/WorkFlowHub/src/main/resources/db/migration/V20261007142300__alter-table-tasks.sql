@@ -1,0 +1,1 @@
+ALTER TABLE workflow.tasks ADD COLUMN task_code VARCHAR(50) NULL
