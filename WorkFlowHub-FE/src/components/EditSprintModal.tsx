@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { SprintService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import type { Sprint } from '../types';
-import { X, Calendar, Loader2, AlertCircle, Edit3 } from 'lucide-react';
+import { X, Calendar, Loader2, AlertCircle, Edit3, ShieldAlert } from 'lucide-react';
 
 interface EditSprintModalProps {
   sprint: Sprint | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (updatedSprint: Sprint) => void;
+  isPM?: boolean;
 }
 
 export const EditSprintModal: React.FC<EditSprintModalProps> = ({
@@ -15,7 +17,9 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  isPM,
 }) => {
+  const { user, currentRole } = useAuth();
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -23,6 +27,12 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
   const [status, setStatus] = useState<string>('PLANNED');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Kiểm tra quyền PM: nếu prop isPM được truyền vào thì dùng, ngược lại kiểm tra role của user
+  const hasPMRole = isPM !== undefined ? isPM : (
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    currentRole === 'PROJECT_MANAGER'
+  );
 
   useEffect(() => {
     if (sprint) {
@@ -39,6 +49,10 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPMRole) {
+      setError('Từ chối thao tác: Chỉ có vai trò Project Manager (PM) mới được quyền chỉnh sửa Sprint.');
+      return;
+    }
     if (!name.trim()) {
       setError('Vui lòng nhập tên Sprint');
       return;
@@ -97,6 +111,13 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
             </p>
           </div>
         </div>
+
+        {!hasPMRole && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center gap-2">
+            <ShieldAlert size={16} className="shrink-0 text-amber-600" />
+            <span>Quyền bị giới hạn: Chỉ thành viên có vai trò <strong>Project Manager (PM)</strong> mới được chỉnh sửa thông tin Sprint này.</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2">
@@ -218,11 +239,11 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              disabled={loading || !hasPMRole}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-60"
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
-              <span>Lưu thay đổi</span>
+              <span>{hasPMRole ? 'Lưu thay đổi' : 'Không có quyền PM'}</span>
             </button>
           </div>
         </form>
