@@ -38,4 +38,6 @@ public class CreateTaskRequest {
     private String status;
 
     private LocalDate dueDate;
+    
+    private String taskCode;
 }

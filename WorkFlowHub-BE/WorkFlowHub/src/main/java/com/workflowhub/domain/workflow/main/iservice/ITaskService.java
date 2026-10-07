@@ -17,4 +17,8 @@ public interface ITaskService {
     TaskResponse updateTask(Long id, UpdateTaskRequest request);
 
     void deleteTask(Long id);
+
+    TaskResponse restoreTask(Long id);
+
+    void permanentDeleteTask(Long id);
 }

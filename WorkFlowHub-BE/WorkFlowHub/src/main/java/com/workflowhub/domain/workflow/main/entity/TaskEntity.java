@@ -49,4 +49,10 @@ public class TaskEntity extends BaseEntity {
 
     @Column(name = "due_date")
     private LocalDate dueDate;
+
+    @Column(name = "task_code", length = 50)
+    private String taskCode;
+
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
 }

@@ -11,6 +11,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.workflowhub.common.constant.SecurityConstants;
 import com.workflowhub.common.exception.UnauthorizedException;
 import com.workflowhub.domain.master.entity.UsersEntity;
+import com.workflowhub.common.enums.RoleEnums;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
@@ -59,7 +60,7 @@ public class JwtTokenProvider {
     public String generateAccessToken(UsersEntity user) {
         String roleName = (user.getRole() != null && user.getRole().getName() != null)
                 ? user.getRole().getName()
-                : ROLE_USER;
+                : RoleEnums.USER.getRoleName();
         return generateToken(user, accessTokenExpirationMs, List.of(roleName));
     }
 

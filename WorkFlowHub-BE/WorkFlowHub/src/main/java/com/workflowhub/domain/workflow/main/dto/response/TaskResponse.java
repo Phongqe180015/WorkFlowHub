@@ -28,6 +28,8 @@ public class TaskResponse {
     private String priority;
     private String status;
     private LocalDate dueDate;
+    private String taskCode;
+    private Boolean isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -34,4 +34,8 @@ public class UpdateTaskRequest {
     private String status;
 
     private LocalDate dueDate;
+
+    private String taskCode;
+
+    private Boolean isDeleted;
 }
