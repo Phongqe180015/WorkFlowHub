@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockTasks, mockActivityLogs } from '../data/mockData';
 import { 
   CheckCircle2, 
   Clock, 
@@ -8,18 +7,22 @@ import {
   ListTodo, 
   Plus, 
   Activity, 
-  Search,
-  Check,
-  Calendar,
-  Layers,
-  Sparkles,
-  FolderPlus,
-  ArrowRight,
-  Loader2
+  Search, 
+  Check, 
+  Calendar, 
+  Layers, 
+  Sparkles, 
+  FolderPlus, 
+  ArrowRight, 
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  ListChecks
 } from 'lucide-react';
 import { CreateProjectModal } from '../components/CreateProjectModal';
-import { ProjectService } from '../services/api';
-import type { Project } from '../types';
+import { SubtaskList } from '../components/SubtaskList';
+import { ProjectService, TaskService, ActivityLogService } from '../services/api';
+import type { Project, Task, ActivityLog } from '../types';
 
 interface UserDashboardProps {
   onGoToProjectManager?: (projectId?: number) => void;
@@ -28,14 +31,24 @@ interface UserDashboardProps {
 export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManager }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'myTasks' | 'myProjects' | 'activities'>('myTasks');
-  const [taskFilter, setTaskFilter] = useState<'ALL' | 'TO_DO' | 'IN_PROGRESS' | 'DONE'>('ALL');
+  const [taskFilter, setTaskFilter] = useState<'ALL' | 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'CLOSED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [createdProjectNotification, setCreatedProjectNotification] = useState<string | null>(null);
-  
-  // Danh sách công việc cá nhân
-  const [tasks, setTasks] = useState(mockTasks);
+
+  // Danh sách công việc cá nhân (100% dữ liệu thực từ Backend API)
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
+
+  // Projects list (100% dữ liệu thực từ backend)
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // Hoạt động gần đây (Dữ liệu thực từ backend)
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
 
   const sidebarItems = [
     { id: 'myTasks', label: 'Công việc của tôi', icon: ListTodo },
@@ -43,12 +56,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     { id: 'activities', label: 'Hoạt động gần đây', icon: Activity },
   ];
 
-  // Projects list (100% dữ liệu thực từ backend)
-  const [projectsList, setProjectsList] = useState<any[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-
-  // Load real projects from backend
-  React.useEffect(() => {
+  // 1. Tải danh sách dự án
+  useEffect(() => {
     const fetchProjects = async () => {
       setLoadingProjects(true);
       try {
@@ -76,6 +85,54 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     fetchProjects();
   }, [user?.id]);
 
+  // 2. Tải danh sách công việc của user từ Backend API
+  useEffect(() => {
+    if (user?.id) {
+      loadUserTasks();
+    }
+  }, [user?.id, projectsList]);
+
+  const loadUserTasks = async () => {
+    if (!user?.id) return;
+    setLoadingTasks(true);
+    try {
+      // Gọi API lấy công việc được phân công cho user
+      const myTasks = await TaskService.getMyTasks(user.id);
+      if (myTasks) {
+        // Chỉ lấy đúng các task được gán cho user hiện tại (assigneeId === user.id)
+        const onlyMyTasks = myTasks.filter((t) => t.assigneeId === user.id);
+        setTasks(onlyMyTasks);
+      } else {
+        setTasks([]);
+      }
+    } catch (err) {
+      console.warn('Lỗi khi tải công việc của tôi từ máy chủ:', err);
+      setTasks([]);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  // 3. Tải hoạt động gần đây từ API
+  useEffect(() => {
+    if (activeTab === 'activities') {
+      loadActivities();
+    }
+  }, [activeTab]);
+
+  const loadActivities = async () => {
+    setLoadingActivities(true);
+    try {
+      const logs = await ActivityLogService.getActivityLogs(0, 20);
+      setActivityLogs(logs || []);
+    } catch (err) {
+      console.warn('Lỗi khi tải hoạt động từ máy chủ:', err);
+      setActivityLogs([]);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
   const handleProjectCreated = (newProject: Project) => {
     const projectItem = {
       id: newProject.id,
@@ -91,7 +148,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     setCreatedProjectNotification(
       `Đã tạo thành công dự án "${newProject.name}"! Bạn đã được cấp quyền Project Manager.`
     );
-    // Tự động chuyển qua view Quản lý dự án sau 1.2s nếu có prop
     if (onGoToProjectManager) {
       setTimeout(() => {
         onGoToProjectManager(newProject.id);
@@ -99,11 +155,27 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     }
   };
 
-  const handleToggleTask = (taskId: number) => {
+  // Chuẩn hóa trạng thái công việc (Hỗ trợ trạng thái CLOSED cho member)
+  const normalizeStatus = (status?: string): 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'CLOSED' => {
+    if (!status) return 'TO_DO';
+    const s = status.trim().toUpperCase();
+    if (s === 'CLOSED' || s === 'CLOSE' || s === 'ĐÃ ĐÓNG' || s === 'ĐÓNG') return 'CLOSED';
+    if (s === 'DONE' || s === 'COMPLETED' || s === 'ĐÃ XONG' || s === 'HOÀN THÀNH') return 'DONE';
+    if (s === 'IN_PROGRESS' || s === 'PROGRESS' || s === 'ĐANG LÀM') return 'IN_PROGRESS';
+    return 'TO_DO';
+  };
+
+  const handleToggleTask = async (taskId: number) => {
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
+    const isDone = normalizeStatus(currentTask.status) === 'DONE';
+    const nextStatus = isDone ? 'IN_PROGRESS' : 'DONE';
+
+    // Cập nhật giao diện tức thì
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          const nextStatus = t.status === 'DONE' ? 'IN_PROGRESS' : 'DONE';
           return {
             ...t,
             status: nextStatus,
@@ -113,38 +185,81 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         return t;
       })
     );
+
+    // Đồng bộ lên backend API
+    try {
+      await TaskService.updateTask(taskId, { status: nextStatus });
+    } catch (err) {
+      console.warn('Lỗi khi cập nhật trạng thái task lên máy chủ:', err);
+    }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleStatusChange = async (taskId: number, newStatus: string) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus,
+              progress: newStatus === 'DONE' || newStatus === 'CLOSED' ? 100 : 50,
+            }
+          : t
+      )
+    );
+    try {
+      await TaskService.updateTask(taskId, { status: newStatus });
+    } catch (err) {
+      console.warn('Lỗi khi cập nhật trạng thái:', err);
+    }
+  };
+
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
-    const newTask = {
-      id: Date.now(),
-      title: newTaskTitle.trim(),
-      status: 'TO_DO' as const,
-      category: 'Cá nhân',
-      assigneeName: user?.name || 'Tôi',
-      assigneeAvatar: user?.avatar || user?.name?.substring(0, 2).toUpperCase() || 'U',
-      progress: 0,
-      dueDate: 'Tuần này',
-      priority: 'MEDIUM' as const,
-    };
+    // Yêu cầu có projectId từ dự án đầu tiên của user
+    const targetProject = projectsList[0];
+    if (!targetProject) {
+      alert('Vui lòng tạo hoặc tham gia dự án trước khi tạo công việc.');
+      setIsCreateProjectOpen(true);
+      return;
+    }
 
-    setTasks([newTask, ...tasks]);
-    setNewTaskTitle('');
+    try {
+      const newTask = await TaskService.createTask({
+        projectId: targetProject.id,
+        assigneeId: user?.id,
+        title: newTaskTitle.trim(),
+        status: 'TO_DO',
+        priority: 'MEDIUM',
+      });
+      setTasks((prev) => [newTask, ...prev]);
+      setNewTaskTitle('');
+    } catch (err: any) {
+      console.error('Lỗi khi tạo công việc mới:', err);
+      alert(err.message || 'Không thể tạo công việc. Vui lòng thử lại!');
+    }
   };
 
+  // Lọc công việc theo bộ lọc trạng thái và từ khóa tìm kiếm
   const filteredTasks = tasks.filter((t) => {
-    const matchFilter = taskFilter === 'ALL' || t.status === taskFilter;
-    const matchSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.category && t.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    const statusNorm = normalizeStatus(t.status);
+    const matchFilter = taskFilter === 'ALL' || statusNorm === taskFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchSearch =
+      !query ||
+      t.title.toLowerCase().includes(query) ||
+      (t.category && t.category.toLowerCase().includes(query)) ||
+      (t.description && t.description.toLowerCase().includes(query)) ||
+      `#${t.id}`.includes(query) ||
+      `task-${t.id}`.toLowerCase().includes(query) ||
+      (t.taskCode && t.taskCode.toLowerCase().includes(query));
     return matchFilter && matchSearch;
   });
 
-  const activeTasksCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
-  const todoTasksCount = tasks.filter((t) => t.status === 'TO_DO').length;
-  const doneTasksCount = tasks.filter((t) => t.status === 'DONE').length;
+  const activeTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'IN_PROGRESS').length;
+  const todoTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'TO_DO').length;
+  const doneTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'DONE').length;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -204,7 +319,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         </div>
       )}
 
-      {/* Metric KPI Cards (4 cards) */}
+      {/* Metric KPI Cards (4 cards tính toán trực tiếp từ dữ liệu thực) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
@@ -308,21 +423,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                   </p>
                 </div>
 
-                {/* Filter pills */}
-                <div className="flex items-center bg-gray-100/80 p-1 rounded-xl text-xs font-medium">
-                  {(['ALL', 'TO_DO', 'IN_PROGRESS', 'DONE'] as const).map((filter) => {
+                {/* Filter pills theo Status */}
+                <div className="flex items-center bg-gray-100/80 p-1 rounded-xl text-xs font-medium overflow-x-auto">
+                  {(['ALL', 'TO_DO', 'IN_PROGRESS', 'DONE', 'CLOSED'] as const).map((filter) => {
                     const labels = {
                       ALL: 'Tất cả',
                       TO_DO: 'Cần làm',
                       IN_PROGRESS: 'Đang làm',
                       DONE: 'Đã xong',
+                      CLOSED: 'Đã đóng',
                     };
                     const isActive = taskFilter === filter;
                     return (
                       <button
                         key={filter}
                         onClick={() => setTaskFilter(filter)}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                           isActive
                             ? 'bg-white text-gray-900 font-semibold shadow-xs'
                             : 'text-gray-500 hover:text-gray-800'
@@ -343,8 +459,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm công việc theo tên, danh mục..."
-                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    placeholder="Tìm kiếm công việc theo mã (#1), tên..."
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
                   />
                 </div>
 
@@ -354,7 +470,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     placeholder="Thêm nhanh nhiệm vụ mới..."
-                    className="pl-4 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all w-56"
+                    className="pl-4 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all w-56 text-gray-800"
                   />
                   <button
                     type="submit"
@@ -366,88 +482,133 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               </div>
 
               {/* Task Items List */}
-              <div className="divide-y divide-gray-100">
-                {filteredTasks.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-gray-400">
-                    Không tìm thấy công việc nào phù hợp.
-                  </div>
-                ) : (
-                  filteredTasks.map((task) => {
-                    const isDone = task.status === 'DONE';
-                    const isInProgress = task.status === 'IN_PROGRESS';
+              {loadingTasks ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
+                  <Loader2 size={24} className="animate-spin text-emerald-600" />
+                  <span>Đang tải nhiệm vụ của bạn...</span>
+                </div>
+              ) : filteredTasks.length === 0 ? (
+                <div className="py-12 text-center text-xs text-gray-400 space-y-2 border-2 border-dashed border-gray-100 rounded-2xl">
+                  <ListTodo size={28} className="mx-auto text-gray-300" />
+                  <p>Không có công việc nào phù hợp trong danh sách.</p>
+                  <span className="text-[11px] text-gray-400">
+                    {taskFilter !== 'ALL'
+                      ? 'Thử chuyển sang bộ lọc "Tất cả" hoặc tạo công việc mới bên trên.'
+                      : 'Hãy thêm nhanh nhiệm vụ bằng ô nhập bên trên.'}
+                  </span>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {filteredTasks.map((task) => {
+                    const statusNorm = normalizeStatus(task.status);
+                    const isDone = statusNorm === 'DONE';
+                    const isInProgress = statusNorm === 'IN_PROGRESS';
+                    const isExpanded = expandedTaskId === task.id;
 
                     return (
                       <div
                         key={task.id}
-                        className="py-3.5 flex items-center justify-between gap-4 group hover:bg-gray-50/60 px-2 rounded-xl transition-colors"
+                        className="py-3.5 px-2 rounded-xl hover:bg-gray-50/60 transition-colors space-y-2 group"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <button
-                            onClick={() => handleToggleTask(task.id)}
-                            className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                              isDone
-                                ? 'bg-emerald-600 border-emerald-600 text-white'
-                                : 'border-gray-300 hover:border-emerald-500 bg-white'
-                            }`}
-                          >
-                            {isDone && <Check size={13} strokeWidth={3} />}
-                          </button>
-
-                          <div className="min-w-0">
-                            <p
-                              className={`text-xs font-medium transition-all truncate ${
-                                isDone ? 'text-gray-400 line-through' : 'text-gray-900'
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleTask(task.id)}
+                              className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                                isDone
+                                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                                  : 'border-gray-300 hover:border-emerald-500 bg-white'
                               }`}
                             >
-                              {task.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {task.category && (
-                                <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-                                  {task.category}
+                              {isDone && <Check size={13} strokeWidth={3} />}
+                            </button>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
+                                  #{task.id}
                                 </span>
-                              )}
-                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                                <Calendar size={11} /> {task.dueDate || 'Hạn chót'}
-                              </span>
+                                <p
+                                  className={`text-xs font-medium transition-all truncate ${
+                                    isDone ? 'text-gray-400 line-through' : 'text-gray-900'
+                                  }`}
+                                >
+                                  {task.title}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-1">
+                                {task.category && (
+                                  <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                                    {task.category}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                  <Calendar size={11} /> {task.dueDate || 'Hạn chót'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                                  className="text-[10px] font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 ml-2 cursor-pointer"
+                                >
+                                  <ListChecks size={12} />
+                                  <span>Việc phụ (Subtasks)</span>
+                                  {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                </button>
+                              </div>
                             </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span
+                              className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${
+                                task.priority === 'HIGH'
+                                  ? 'bg-red-50 text-red-700 border border-red-100'
+                                  : task.priority === 'MEDIUM'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {task.priority === 'HIGH'
+                                ? 'Ưu tiên Cao'
+                                : task.priority === 'MEDIUM'
+                                ? 'Trung bình'
+                                : 'Ưu tiên Thấp'}
+                            </span>
+
+                            <select
+                              value={statusNorm}
+                              onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer ${
+                                isDone
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : isInProgress
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : statusNorm === 'CLOSED'
+                                  ? 'bg-gray-100 text-gray-500 border-gray-300'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
+                            >
+                              <option value="TO_DO">Cần làm (To Do)</option>
+                              <option value="IN_PROGRESS">Đang làm (In Progress)</option>
+                              <option value="DONE">Hoàn thành (Done)</option>
+                              <option value="CLOSED">Đã đóng (Closed)</option>
+                            </select>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span
-                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${
-                              task.priority === 'HIGH'
-                                ? 'bg-red-50 text-red-700 border border-red-100'
-                                : task.priority === 'MEDIUM'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {task.priority === 'HIGH'
-                              ? 'Ưu tiên Cao'
-                              : task.priority === 'MEDIUM'
-                              ? 'Trung bình'
-                              : 'Ưu tiên Thấp'}
-                          </span>
-
-                          <span
-                            className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full ${
-                              isDone
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : isInProgress
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {isDone ? 'Hoàn thành' : isInProgress ? 'Đang làm' : 'Cần làm'}
-                          </span>
-                        </div>
+                        {/* Expandable Subtask List */}
+                        {isExpanded && (
+                          <div className="pl-8 pt-1 animate-in fade-in">
+                            <SubtaskList taskId={task.id} compact />
+                          </div>
+                        )}
                       </div>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -560,31 +721,43 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             </div>
           )}
 
-          {/* TAB 3: HOẠT ĐỘNG GẦN ĐÂY */}
+          {/* TAB 3: HOẠT ĐỘNG GẦN ĐÂY (Dữ liệu thực từ API) */}
           {activeTab === 'activities' && (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
               <h2 className="text-lg font-bold text-gray-900">Hoạt động gần đây</h2>
               <p className="text-xs text-gray-500">
-                Nhật ký thao tác và cập nhật trạng thái trong các dự án của bạn.
+                Nhật ký thao tác và cập nhật trạng thái thực tế từ hệ thống.
               </p>
 
-              <div className="divide-y divide-gray-100 pt-2">
-                {mockActivityLogs.map((log) => (
-                  <div key={log.id} className="py-3.5 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-semibold text-[11px]">
-                        {log.userName.substring(0, 2).toUpperCase()}
+              {loadingActivities ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
+                  <Loader2 size={24} className="animate-spin text-emerald-600" />
+                  <span>Đang tải hoạt động...</span>
+                </div>
+              ) : activityLogs.length === 0 ? (
+                <div className="py-12 text-center text-xs text-gray-400 space-y-2 border-2 border-dashed border-gray-100 rounded-2xl">
+                  <Activity size={24} className="mx-auto text-gray-300" />
+                  <p>Chưa có hoạt động nào được ghi nhận gần đây.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100 pt-2">
+                  {activityLogs.map((log) => (
+                    <div key={log.id} className="py-3.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-semibold text-[11px]">
+                          {(log.userName || 'U').substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-gray-900">{log.userName}</span>{' '}
+                          <span className="text-gray-500">{log.action}</span>{' '}
+                          <span className="font-medium text-emerald-700">{log.target}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-semibold text-gray-900">{log.userName}</span>{' '}
-                        <span className="text-gray-500">{log.action}</span>{' '}
-                        <span className="font-medium text-emerald-700">{log.target}</span>
-                      </div>
+                      <span className="text-[11px] text-gray-400">{log.timeAgo}</span>
                     </div>
-                    <span className="text-[11px] text-gray-400">{log.timeAgo}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -8,10 +8,11 @@ import type {
   Sprint, 
   Role, 
   CreateProjectPayload, 
-  CreateProjectMemberPayload, 
+  CreateProjectMemberPayload,
   CreateSprintPayload,
   Task,
-  CreateTaskPayload
+  CreateTaskPayload,
+  ActivityLog
 } from '../types';
 
 const ENV_API_URL = import.meta.env.VITE_API_URL;
@@ -346,6 +347,50 @@ export const TaskService = {
   },
 
   /**
+   * GET /api/v1/tasks?search=sprintId=={id}
+   */
+  async getTasksBySprintId(sprintId: number): Promise<Task[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
+        `/tasks?search=sprintId==${sprintId}&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch tasks for sprintId=${sprintId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * GET /api/v1/tasks?search=assigneeId=={userId}
+   */
+  async getMyTasks(userId: number): Promise<Task[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
+        `/tasks?search=assigneeId==${userId}&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch tasks for assigneeId=${userId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * GET /api/v1/tasks
+   */
+  async getAllTasks(search?: string, page = 0, size = 100): Promise<Task[]> {
+    try {
+      const query = search ? `?search=${encodeURIComponent(search)}&page=${page}&size=${size}` : `?page=${page}&size=${size}`;
+      const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(`/tasks${query}`);
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn('Failed to fetch tasks:', err);
+      return [];
+    }
+  },
+
+  /**
    * POST /api/v1/tasks
    */
   async createTask(payload: CreateTaskPayload): Promise<Task> {
@@ -362,10 +407,95 @@ export const TaskService = {
   },
 
   /**
-   * DELETE /api/v1/tasks/{id}
+   * DELETE /api/v1/tasks/{id} (Soft delete)
    */
   async deleteTask(id: number): Promise<void> {
     await ApiClient.delete<ApiResponse<void>>(`/tasks/${id}`);
+  },
+
+  /**
+   * PUT /api/v1/tasks/{id}/restore
+   */
+  async restoreTask(id: number): Promise<Task> {
+    const res = await ApiClient.put<ApiResponse<Task>>(`/tasks/${id}/restore`);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/tasks/{id}/permanent
+   */
+  async permanentDeleteTask(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/tasks/${id}/permanent`);
+  },
+
+  /**
+   * GET /api/v1/tasks?search=projectId=={id};isDeleted==true
+   */
+  async getTrashTasks(projectId: number): Promise<Task[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
+        `/tasks?search=projectId==${projectId};isDeleted==true&page=0&size=100`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn(`Failed to fetch trash tasks for projectId=${projectId}:`, err);
+      return [];
+    }
+  },
+};
+
+export const SubtaskApiService = {
+  /**
+   * GET /api/v1/subtasks/task/{taskId}
+   */
+  async getSubtasksByTaskId(taskId: number): Promise<any[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<any[]>>(`/subtasks/task/${taskId}`);
+      return res.data || [];
+    } catch (err) {
+      console.warn(`Failed to fetch subtasks for taskId=${taskId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/v1/subtasks
+   */
+  async createSubtask(payload: { taskId: number; title: string; description?: string }): Promise<any> {
+    const res = await ApiClient.post<ApiResponse<any>>('/subtasks', payload);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/subtasks/{id}
+   */
+  async updateSubtask(id: number | string, payload: { title?: string; description?: string; isCompleted?: boolean }): Promise<any> {
+    const res = await ApiClient.put<ApiResponse<any>>(`/subtasks/${id}`, payload);
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/subtasks/{id}
+   */
+  async deleteSubtask(id: number | string): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/subtasks/${id}`);
+  },
+};
+
+export const ActivityLogService = {
+  /**
+   * GET /api/v1/activity-logs
+   */
+  async getActivityLogs(page = 0, size = 20): Promise<ActivityLog[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<ActivityLog>>>(
+        `/activity-logs?page=${page}&size=${size}`
+      );
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn('Failed to fetch activity logs:', err);
+      return [];
+    }
   },
 };
 

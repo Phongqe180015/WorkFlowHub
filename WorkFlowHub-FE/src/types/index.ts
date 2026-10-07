@@ -47,8 +47,17 @@ export interface Project {
   updatedAt?: string;
 }
 
+export interface Subtask {
+  id: number | string;
+  taskId?: number;
+  title: string;
+  isCompleted: boolean;
+  createdAt?: string;
+}
+
 export interface Task {
   id: number;
+  taskCode?: string;
   title: string;
   description?: string;
   status: 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'REVIEW' | string;
@@ -62,6 +71,9 @@ export interface Task {
   progress?: number;
   dueDate?: string;
   projectId?: number;
+  projectName?: string;
+  parentTaskId?: number | null;
+  subtasks?: Subtask[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -75,6 +87,8 @@ export interface CreateTaskPayload {
   priority?: string;
   status?: string;
   dueDate?: string;
+  taskCode?: string;
+  parentTaskId?: number | null;
 }
 
 export interface Role {

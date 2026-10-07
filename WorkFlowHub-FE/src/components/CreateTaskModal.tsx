@@ -7,6 +7,7 @@ interface CreateTaskModalProps {
   projectId: number;
   members: ProjectMember[];
   sprints?: Sprint[];
+  initialSprintId?: number | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (task: Task) => void;
@@ -16,6 +17,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   projectId,
   members,
   sprints = [],
+  initialSprintId,
   isOpen,
   onClose,
   onSuccess,
@@ -25,12 +27,18 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
-  const [sprintId, setSprintId] = useState<string>('');
+  const [sprintId, setSprintId] = useState<string>(initialSprintId ? String(initialSprintId) : '');
   const [priority, setPriority] = useState<string>('MEDIUM');
   const [status, setStatus] = useState<string>('TO_DO');
   const [dueDate, setDueDate] = useState<string>(getTodayStr());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen && initialSprintId) {
+      setSprintId(String(initialSprintId));
+    }
+  }, [isOpen, initialSprintId]);
 
   if (!isOpen) return null;
 
