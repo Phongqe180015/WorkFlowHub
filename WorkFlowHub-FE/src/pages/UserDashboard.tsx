@@ -61,18 +61,33 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     const fetchProjects = async () => {
       setLoadingProjects(true);
       try {
-        const remoteProjects = await ProjectService.getProjects();
+        const remoteProjects = await ProjectService.getMyProjects();
         if (remoteProjects) {
-          const formatted = remoteProjects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            description: p.description || 'Chưa có mô tả dự án',
-            membersCount: 1,
-            progress: 0,
-            activeSprint: 'Chưa có sprint',
-            roleInProject: p.ownerId === user?.id ? 'Project Manager (Quản lý)' : 'Thành viên',
-            ownerId: p.ownerId,
-          }));
+          const formatted = remoteProjects.map((p) => {
+            const role = (p.currentUserRole || '').toUpperCase();
+            const isOwner = p.ownerId === user?.id || role === 'PROJECT_MANAGER';
+            const roleLabel = role === 'PROJECT_MANAGER' || isOwner
+              ? 'Project Manager (Quản lý)'
+              : role === 'DEVELOPER'
+              ? 'Developer (Phát triển)'
+              : role === 'TESTER'
+              ? 'Tester (Kiểm thử)'
+              : role === 'VIEWER'
+              ? 'Viewer (Người xem)'
+              : p.currentUserRole || 'Thành viên';
+
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description || 'Chưa có mô tả dự án',
+              membersCount: 1,
+              progress: 0,
+              activeSprint: 'Chưa có sprint',
+              roleInProject: roleLabel,
+              currentUserRole: p.currentUserRole,
+              ownerId: p.ownerId,
+            };
+          });
           setProjectsList(formatted);
         }
       } catch (err) {
@@ -141,7 +156,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       membersCount: 1,
       progress: 0,
       activeSprint: 'Chưa bắt đầu sprint',
-      roleInProject: 'Project Manager (Chủ dự án)',
+      roleInProject: 'Project Manager (Quản lý)',
+      currentUserRole: 'PROJECT_MANAGER',
       ownerId: newProject.ownerId,
     };
     setProjectsList((prev) => [projectItem, ...prev]);
@@ -650,7 +666,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {projectsList.map((p) => {
-                      const isOwner = p.ownerId === user?.id || (p.roleInProject && p.roleInProject.includes('Project Manager'));
+                      const isOwner = p.ownerId === user?.id || (p.roleInProject && p.roleInProject.includes('Project Manager')) || (p.currentUserRole && p.currentUserRole.toUpperCase() === 'PROJECT_MANAGER');
                       return (
                         <div
                           key={p.id}
