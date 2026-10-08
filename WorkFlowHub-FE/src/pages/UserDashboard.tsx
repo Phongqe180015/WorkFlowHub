@@ -17,12 +17,19 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  ListChecks
+  ListChecks,
+  Eye,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { SubtaskList } from '../components/SubtaskList';
-import { ProjectService, TaskService, ActivityLogService } from '../services/api';
-import type { Project, Task, ActivityLog } from '../types';
+import { TaskDetailModal } from '../components/TaskDetailModal';
+import { EditTaskModal } from '../components/EditTaskModal';
+import { SubtaskFormModal } from '../components/SubtaskFormModal';
+import { ProjectService, TaskService, ActivityLogService, ProjectMemberService } from '../services/api';
+import { SubtaskService } from '../services/subtaskService';
+import type { Project, Task, ActivityLog, Subtask, ProjectMember } from '../types';
 
 interface UserDashboardProps {
   onGoToProjectManager?: (projectId?: number) => void;
@@ -49,6 +56,107 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
   // Hoạt động gần đây (Dữ liệu thực từ backend)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // Modals: Detail, Edit Task, Subtask Form
+  const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
+  const [selectedDetailSubtask, setSelectedDetailSubtask] = useState<Subtask | null>(null);
+  const [parentTaskForSubtask, setParentTaskForSubtask] = useState<Task | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+
+  const [subtaskFormTaskId, setSubtaskFormTaskId] = useState<number | null>(null);
+  const [editingSubtaskItem, setEditingSubtaskItem] = useState<Subtask | null>(null);
+  const [isSubtaskFormOpen, setIsSubtaskFormOpen] = useState(false);
+
+  const [projectMembers, setProjectMembers] = useState<Record<number, ProjectMember[]>>({});
+
+  const loadMembersForProject = async (projectId: number) => {
+    if (projectMembers[projectId]) return projectMembers[projectId];
+    try {
+      const list = await ProjectMemberService.getMembersByProjectId(projectId);
+      setProjectMembers((prev) => ({ ...prev, [projectId]: list }));
+      return list;
+    } catch {
+      return [];
+    }
+  };
+
+  const handleOpenTaskDetail = (task: Task) => {
+    if (task.projectId) {
+      loadMembersForProject(task.projectId);
+    }
+    setSelectedDetailTask(task);
+    setSelectedDetailSubtask(null);
+    setParentTaskForSubtask(null);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleOpenSubtaskDetail = (st: Subtask, pTask: Task) => {
+    if (pTask.projectId) {
+      loadMembersForProject(pTask.projectId);
+    }
+    setSelectedDetailSubtask(st);
+    setParentTaskForSubtask(pTask);
+    setSelectedDetailTask(null);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleOpenEditTask = (task: Task) => {
+    if (task.projectId) {
+      loadMembersForProject(task.projectId);
+    }
+    setEditingTask(task);
+    setIsEditTaskModalOpen(true);
+  };
+
+  const handleOpenCreateSubtask = (task: Task) => {
+    if (task.projectId) {
+      loadMembersForProject(task.projectId);
+    }
+    setSubtaskFormTaskId(task.id);
+    setEditingSubtaskItem(null);
+    setIsSubtaskFormOpen(true);
+  };
+
+  const handleOpenEditSubtask = (st: Subtask, parentTaskId: number) => {
+    const pTask = tasks.find((t) => t.id === parentTaskId);
+    if (pTask?.projectId) {
+      loadMembersForProject(pTask.projectId);
+    }
+    setSubtaskFormTaskId(parentTaskId);
+    setEditingSubtaskItem(st);
+    setIsSubtaskFormOpen(true);
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      await TaskService.deleteTask(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setIsDetailModalOpen(false);
+    } catch (err) {
+      console.warn('Lỗi khi xóa task:', err);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: number | string, parentTaskId: number) => {
+    await SubtaskService.deleteSubtask(parentTaskId, subtaskId);
+    if (selectedDetailSubtask?.id === subtaskId) {
+      if (parentTaskForSubtask) {
+        handleOpenTaskDetail(parentTaskForSubtask);
+      } else {
+        setIsDetailModalOpen(false);
+      }
+    }
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    if (selectedDetailTask?.id === updatedTask.id) {
+      setSelectedDetailTask(updatedTask);
+    }
+  };
 
   const sidebarItems = [
     { id: 'myTasks', label: 'Công việc của tôi', icon: ListTodo },
@@ -542,13 +650,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-semibold">
+                                <span
+                                  onClick={() => handleOpenTaskDetail(task)}
+                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold cursor-pointer transition-colors"
+                                  title="Xem chi tiết nhiệm vụ"
+                                >
                                   #{task.id}
                                 </span>
                                 <p
-                                  className={`text-xs font-medium transition-all truncate ${
+                                  onClick={() => handleOpenTaskDetail(task)}
+                                  className={`text-xs font-medium transition-all truncate cursor-pointer hover:text-emerald-700 ${
                                     isDone ? 'text-gray-400 line-through' : 'text-gray-900'
                                   }`}
+                                  title="Bấm để xem chi tiết"
                                 >
                                   {task.title}
                                 </p>
@@ -576,7 +690,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0">
                             <span
                               className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${
                                 task.priority === 'HIGH'
@@ -611,13 +725,52 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                               <option value="DONE">Hoàn thành (Done)</option>
                               <option value="CLOSED">Đã đóng (Closed)</option>
                             </select>
+
+                            {/* Nút Xem chi tiết */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTaskDetail(task)}
+                              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <Eye size={15} />
+                            </button>
+
+                            {/* Nút Chỉnh sửa Task */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTask(task)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Chỉnh sửa nhiệm vụ"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+
+                            {/* Nút Xóa Task */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Bạn có chắc muốn xóa công việc "${task.title}"?`)) {
+                                  handleDeleteTask(task.id);
+                                }
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xóa công việc"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           </div>
                         </div>
 
                         {/* Expandable Subtask List */}
                         {isExpanded && (
                           <div className="pl-8 pt-1 animate-in fade-in">
-                            <SubtaskList taskId={task.id} compact />
+                            <SubtaskList
+                              taskId={task.id}
+                              members={task.projectId ? projectMembers[task.projectId] || [] : []}
+                              onSelectSubtask={(st) => handleOpenSubtaskDetail(st, task)}
+                              compact
+                            />
                           </div>
                         )}
                       </div>
@@ -785,6 +938,76 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         onClose={() => setIsCreateProjectOpen(false)}
         onSuccess={handleProjectCreated}
       />
+
+      {/* Modal Xem Chi Tiết Task / Subtask */}
+      <TaskDetailModal
+        task={selectedDetailTask}
+        subtask={selectedDetailSubtask}
+        parentTask={parentTaskForSubtask}
+        members={selectedDetailTask?.projectId ? projectMembers[selectedDetailTask.projectId] || [] : []}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedDetailTask(null);
+          setSelectedDetailSubtask(null);
+          setParentTaskForSubtask(null);
+        }}
+        onEditTask={(t) => {
+          setIsDetailModalOpen(false);
+          handleOpenEditTask(t);
+        }}
+        onEditSubtask={(st, pTaskId) => {
+          setIsDetailModalOpen(false);
+          handleOpenEditSubtask(st, pTaskId);
+        }}
+        onDeleteTask={handleDeleteTask}
+        onDeleteSubtask={handleDeleteSubtask}
+        onSelectSubtask={(st, pTask) => {
+          handleOpenSubtaskDetail(st, pTask);
+        }}
+        onBackToParentTask={(pTask) => {
+          handleOpenTaskDetail(pTask);
+        }}
+        onCreateSubtaskForTask={(t) => {
+          handleOpenCreateSubtask(t);
+        }}
+      />
+
+      {/* Modal Chỉnh Sửa Task */}
+      <EditTaskModal
+        task={editingTask}
+        members={editingTask?.projectId ? projectMembers[editingTask.projectId] || [] : []}
+        isOpen={isEditTaskModalOpen}
+        onClose={() => {
+          setIsEditTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        onSuccess={handleTaskUpdated}
+      />
+
+      {/* Modal Tạo / Chỉnh Sửa Subtask */}
+      {subtaskFormTaskId && (
+        <SubtaskFormModal
+          taskId={subtaskFormTaskId}
+          subtask={editingSubtaskItem}
+          members={(() => {
+            const t = tasks.find((tk) => tk.id === subtaskFormTaskId);
+            return t?.projectId ? projectMembers[t.projectId] || [] : [];
+          })()}
+          isOpen={isSubtaskFormOpen}
+          onClose={() => {
+            setIsSubtaskFormOpen(false);
+            setSubtaskFormTaskId(null);
+            setEditingSubtaskItem(null);
+          }}
+          onSuccess={(saved) => {
+            // If we were viewing the parent task or this subtask, refresh
+            if (selectedDetailSubtask?.id === saved.id) {
+              setSelectedDetailSubtask(saved);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

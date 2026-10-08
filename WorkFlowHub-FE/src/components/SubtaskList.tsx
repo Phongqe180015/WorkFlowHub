@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { SubtaskService } from '../services/subtaskService';
-import type { Subtask } from '../types';
-import { Check, Plus, Trash2, ListChecks, Loader2 } from 'lucide-react';
+import type { Subtask, ProjectMember } from '../types';
+import { Check, Plus, Trash2, ListChecks, Loader2, Edit3, Eye, Clock, User, Sparkles } from 'lucide-react';
+import { SubtaskFormModal } from './SubtaskFormModal';
 
 interface SubtaskListProps {
   taskId: number;
+  members?: ProjectMember[];
   onSubtasksChange?: (subtasks: Subtask[]) => void;
+  onSelectSubtask?: (subtask: Subtask) => void;
   compact?: boolean;
 }
 
 export const SubtaskList: React.FC<SubtaskListProps> = ({
   taskId,
+  members = [],
   onSubtasksChange,
+  onSelectSubtask,
   compact = false,
 }) => {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Modal create/edit subtask state
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,12 +44,12 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     };
   }, [taskId]);
 
-  const handleAddSubtask = async (e: React.FormEvent) => {
+  const handleQuickAddSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
     setLoading(true);
-    const created = await SubtaskService.addSubtask(taskId, newTitle);
+    const created = await SubtaskService.addSubtask(taskId, newTitle.trim());
     const updated = [...subtasks, created];
     setSubtasks(updated);
     setNewTitle('');
@@ -52,7 +61,6 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   };
 
   const handleToggle = async (subtaskId: number | string) => {
-    // Optimistic
     setSubtasks((prev) =>
       prev.map((s) => (s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s))
     );
@@ -64,13 +72,36 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   };
 
   const handleDelete = async (subtaskId: number | string) => {
-    // Optimistic
+    if (!confirm('Bạn có chắc muốn xóa việc phụ này?')) return;
     setSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
     const updated = await SubtaskService.deleteSubtask(taskId, subtaskId);
     setSubtasks(updated);
     if (onSubtasksChange) {
       onSubtasksChange(updated);
     }
+  };
+
+  const handleFormModalSuccess = (savedSubtask: Subtask) => {
+    setSubtasks((prev) => {
+      const exists = prev.some((s) => s.id === savedSubtask.id);
+      const updated = exists
+        ? prev.map((s) => (s.id === savedSubtask.id ? savedSubtask : s))
+        : [...prev, savedSubtask];
+      if (onSubtasksChange) {
+        onSubtasksChange(updated);
+      }
+      return updated;
+    });
+  };
+
+  const openCreateModal = () => {
+    setEditingSubtask(null);
+    setIsFormModalOpen(true);
+  };
+
+  const openEditModal = (st: Subtask) => {
+    setEditingSubtask(st);
+    setIsFormModalOpen(true);
   };
 
   const completedCount = subtasks.filter((s) => s.isCompleted).length;
@@ -87,11 +118,23 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
             ({completedCount}/{subtasks.length})
           </span>
         </div>
-        {subtasks.length > 0 && (
-          <span className="text-[11px] font-bold text-emerald-700">
-            {progressPercent}%
-          </span>
-        )}
+
+        <div className="flex items-center gap-2">
+          {subtasks.length > 0 && (
+            <span className="text-[11px] font-bold text-emerald-700">
+              {progressPercent}%
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+            title="Thêm subtask có đầy đủ mô tả, người phụ trách và ước lượng"
+          >
+            <Sparkles size={12} className="text-emerald-600" />
+            <span>+ Tạo chi tiết</span>
+          </button>
+        </div>
       </div>
 
       {subtasks.length > 0 && (
@@ -107,13 +150,13 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
       <div className="space-y-1.5 pt-1">
         {subtasks.length === 0 ? (
           <div className="text-[11px] text-gray-400 py-1 italic">
-            Chưa có công việc phụ nào. Thêm bên dưới:
+            Chưa có công việc phụ nào. Thêm nhanh bên dưới hoặc bấm &quot;+ Tạo chi tiết&quot;:
           </div>
         ) : (
           subtasks.map((st) => (
             <div
               key={st.id}
-              className="flex items-center justify-between gap-2.5 py-1.5 px-2 rounded-xl hover:bg-white transition-colors group"
+              className="flex items-center justify-between gap-2.5 py-2 px-2.5 rounded-xl hover:bg-white bg-white/40 border border-gray-100/60 transition-all group shadow-2xs"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <button
@@ -127,35 +170,88 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                 >
                   {st.isCompleted && <Check size={11} strokeWidth={3} />}
                 </button>
-                <span
-                  className={`text-xs transition-all truncate ${
-                    st.isCompleted ? 'text-gray-400 line-through' : 'text-gray-800'
-                  }`}
+
+                <div 
+                  className="min-w-0 flex-1 cursor-pointer"
+                  onClick={() => onSelectSubtask && onSelectSubtask(st)}
                 >
-                  {st.title}
-                </span>
+                  <span
+                    className={`text-xs font-medium transition-all block truncate ${
+                      st.isCompleted ? 'text-gray-400 line-through' : 'text-gray-800 hover:text-emerald-700'
+                    }`}
+                  >
+                    {st.title}
+                  </span>
+
+                  {/* Metadata tags: Assignee, EST */}
+                  {(st.assigneeName || st.estimate || st.dueDate) && (
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
+                      {st.assigneeName && (
+                        <span className="inline-flex items-center gap-0.5 bg-gray-100 text-gray-600 px-1.5 py-0.2 rounded font-medium">
+                          <User size={10} />
+                          <span>{st.assigneeName}</span>
+                        </span>
+                      )}
+                      {st.estimate && (
+                        <span className="inline-flex items-center gap-0.5 bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded font-medium">
+                          <Clock size={10} />
+                          <span>{st.estimate}</span>
+                        </span>
+                      )}
+                      {st.dueDate && (
+                        <span>📅 {st.dueDate}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleDelete(st.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-                title="Xóa việc phụ"
-              >
-                <Trash2 size={13} />
-              </button>
+              {/* Action buttons */}
+              <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity shrink-0">
+                {/* View Detail button */}
+                {onSelectSubtask && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectSubtask(st)}
+                    className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                    title="Xem chi tiết việc phụ"
+                  >
+                    <Eye size={13} />
+                  </button>
+                )}
+
+                {/* Edit Button */}
+                <button
+                  type="button"
+                  onClick={() => openEditModal(st)}
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                  title="Chỉnh sửa việc phụ"
+                >
+                  <Edit3 size={13} />
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(st.id)}
+                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                  title="Xóa việc phụ"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Add Subtask Form */}
-      <form onSubmit={handleAddSubtask} className="flex gap-2 pt-1">
+      {/* Quick Add Subtask Form */}
+      <form onSubmit={handleQuickAddSubtask} className="flex gap-2 pt-1">
         <input
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Thêm việc phụ mới..."
+          placeholder="Thêm nhanh tiêu đề việc phụ..."
           className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-800"
         />
         <button
@@ -164,9 +260,22 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
         >
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-          <span>Thêm</span>
+          <span>Thêm nhanh</span>
         </button>
       </form>
+
+      {/* Subtask Form Modal (Create / Edit with rich fields: title, description, assignee, est, priority, deadline) */}
+      <SubtaskFormModal
+        taskId={taskId}
+        subtask={editingSubtask}
+        members={members}
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setEditingSubtask(null);
+        }}
+        onSuccess={handleFormModalSuccess}
+      />
     </div>
   );
 };

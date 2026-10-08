@@ -52,8 +52,15 @@ export interface Subtask {
   id: number | string;
   taskId?: number;
   title: string;
+  description?: string;
   isCompleted: boolean;
+  assigneeId?: number | null;
+  assigneeName?: string;
+  estimate?: string;
+  priority?: string;
+  dueDate?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Task {
@@ -67,6 +74,7 @@ export interface Task {
   assigneeId?: number | null;
   assigneeName?: string;
   assigneeAvatar?: string;
+  estimate?: string;
   sprintId?: number | null;
   sprintName?: string;
   progress?: number;
@@ -88,8 +96,45 @@ export interface CreateTaskPayload {
   priority?: string;
   status?: string;
   dueDate?: string;
+  estimate?: string;
   taskCode?: string;
   parentTaskId?: number | null;
+}
+
+export interface UpdateTaskPayload {
+  projectId?: number;
+  sprintId?: number | null;
+  assigneeId?: number | null;
+  title?: string;
+  description?: string;
+  priority?: string;
+  status?: string;
+  dueDate?: string;
+  estimate?: string;
+  taskCode?: string;
+}
+
+export interface CreateSubtaskPayload {
+  taskId: number;
+  title: string;
+  description?: string;
+  assigneeId?: number | null;
+  assigneeName?: string;
+  estimate?: string;
+  priority?: string;
+  dueDate?: string;
+  isCompleted?: boolean;
+}
+
+export interface UpdateSubtaskPayload {
+  title?: string;
+  description?: string;
+  isCompleted?: boolean;
+  assigneeId?: number | null;
+  assigneeName?: string;
+  estimate?: string;
+  priority?: string;
+  dueDate?: string;
 }
 
 export interface Role {

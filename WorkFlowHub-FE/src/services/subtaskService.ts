@@ -1,4 +1,4 @@
-import type { Subtask } from '../types';
+import type { Subtask, CreateSubtaskPayload, UpdateSubtaskPayload } from '../types';
 import { SubtaskApiService } from './api';
 
 export const SubtaskService = {
@@ -22,36 +22,75 @@ export const SubtaskService = {
   },
 
   async fetchSubtasks(taskId: number): Promise<Subtask[]> {
+    const local = this.getLocalSubtasks(taskId);
+    const localMap = new Map<string | number, Subtask>(local.map((s) => [s.id, s]));
+
     try {
       const remote = await SubtaskApiService.getSubtasksByTaskId(taskId);
       if (remote && remote.length > 0) {
-        const formatted: Subtask[] = remote.map((r: any) => ({
-          id: r.id,
-          taskId: r.taskId || taskId,
-          title: r.title,
-          description: r.description,
-          isCompleted: Boolean(r.isCompleted),
-          createdAt: r.createdAt,
-        }));
+        const formatted: Subtask[] = remote.map((r: any) => {
+          const cached = localMap.get(r.id);
+          return {
+            id: r.id,
+            taskId: r.taskId || taskId,
+            title: r.title,
+            description: r.description ?? cached?.description,
+            isCompleted: Boolean(r.isCompleted),
+            assigneeId: r.assigneeId !== undefined ? r.assigneeId : cached?.assigneeId,
+            assigneeName: r.assigneeName ?? cached?.assigneeName,
+            estimate: r.estimate !== undefined ? r.estimate : cached?.estimate,
+            priority: r.priority ?? cached?.priority,
+            dueDate: r.dueDate !== undefined ? r.dueDate : cached?.dueDate,
+            createdAt: r.createdAt || cached?.createdAt,
+            updatedAt: r.updatedAt || cached?.updatedAt,
+          };
+        });
         this.saveLocalSubtasks(taskId, formatted);
         return formatted;
       }
     } catch (err) {
       console.warn('Failed to fetch remote subtasks, fallback to local:', err);
     }
-    return this.getLocalSubtasks(taskId);
+    return local;
   },
 
-  async addSubtask(taskId: number, title: string): Promise<Subtask> {
+  async addSubtask(taskId: number, payload: string | CreateSubtaskPayload): Promise<Subtask> {
+    const isString = typeof payload === 'string';
+    const title = isString ? payload.trim() : payload.title.trim();
+    const description = isString ? undefined : payload.description?.trim();
+    const assigneeId = isString ? null : payload.assigneeId;
+    const assigneeName = isString ? undefined : payload.assigneeName;
+    const estimate = isString ? undefined : payload.estimate?.trim();
+    const priority = isString ? 'MEDIUM' : payload.priority || 'MEDIUM';
+    const dueDate = isString ? undefined : payload.dueDate;
+    const isCompleted = isString ? false : Boolean(payload.isCompleted);
+
     try {
-      const remote = await SubtaskApiService.createSubtask({ taskId, title });
+      const remote = await SubtaskApiService.createSubtask({
+        taskId,
+        title,
+        description,
+        assigneeId,
+        estimate,
+        priority,
+        dueDate,
+        isCompleted,
+      });
+
       if (remote && remote.id) {
         const newSt: Subtask = {
           id: remote.id,
           taskId,
           title: remote.title || title,
-          isCompleted: Boolean(remote.isCompleted),
-          createdAt: remote.createdAt,
+          description: remote.description !== undefined ? remote.description : description,
+          isCompleted: remote.isCompleted !== undefined ? Boolean(remote.isCompleted) : isCompleted,
+          assigneeId: remote.assigneeId !== undefined ? remote.assigneeId : assigneeId,
+          assigneeName: remote.assigneeName || assigneeName,
+          estimate: remote.estimate !== undefined ? remote.estimate : estimate,
+          priority: remote.priority || priority,
+          dueDate: remote.dueDate !== undefined ? remote.dueDate : dueDate,
+          createdAt: remote.createdAt || new Date().toISOString(),
+          updatedAt: remote.updatedAt || new Date().toISOString(),
         };
         const current = this.getLocalSubtasks(taskId);
         this.saveLocalSubtasks(taskId, [...current, newSt]);
@@ -65,13 +104,68 @@ export const SubtaskService = {
     const newSubtask: Subtask = {
       id: Date.now(),
       taskId,
-      title: title.trim(),
-      isCompleted: false,
+      title,
+      description,
+      isCompleted,
+      assigneeId,
+      assigneeName,
+      estimate,
+      priority,
+      dueDate,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     const updated = [...current, newSubtask];
     this.saveLocalSubtasks(taskId, updated);
     return newSubtask;
+  },
+
+  async updateSubtaskDetails(
+    taskId: number,
+    subtaskId: number | string,
+    payload: UpdateSubtaskPayload
+  ): Promise<Subtask | null> {
+    const current = this.getLocalSubtasks(taskId);
+    const existing = current.find((s) => s.id === subtaskId);
+
+    try {
+      await SubtaskApiService.updateSubtask(subtaskId, {
+        title: payload.title,
+        description: payload.description,
+        isCompleted: payload.isCompleted,
+        assigneeId: payload.assigneeId,
+        estimate: payload.estimate,
+        priority: payload.priority,
+        dueDate: payload.dueDate,
+      });
+    } catch (err) {
+      console.warn('API updateSubtask failed, updating locally:', err);
+    }
+
+    let updatedSubtask: Subtask | null = null;
+    const updatedList = current.map((s) => {
+      if (s.id === subtaskId) {
+        updatedSubtask = {
+          ...s,
+          ...payload,
+          updatedAt: new Date().toISOString(),
+        };
+        return updatedSubtask;
+      }
+      return s;
+    });
+
+    if (!updatedSubtask && existing) {
+      updatedSubtask = {
+        ...existing,
+        ...payload,
+        updatedAt: new Date().toISOString(),
+      };
+      updatedList.push(updatedSubtask);
+    }
+
+    this.saveLocalSubtasks(taskId, updatedList);
+    return updatedSubtask;
   },
 
   async toggleSubtask(taskId: number, subtaskId: number | string): Promise<Subtask[]> {
@@ -86,7 +180,7 @@ export const SubtaskService = {
     }
 
     const updated = current.map((st) =>
-      st.id === subtaskId ? { ...st, isCompleted: nextCompleted } : st
+      st.id === subtaskId ? { ...st, isCompleted: nextCompleted, updatedAt: new Date().toISOString() } : st
     );
     this.saveLocalSubtasks(taskId, updated);
     return updated;
