@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   ProjectService, 
@@ -71,6 +71,9 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   // Sprint được chọn để xem chi tiết các Task (Click vào sprint)
   const [selectedSprintForTasks, setSelectedSprintForTasks] = useState<Sprint | null>(null);
+
+  // Sprint được chọn xem trong tab Burndown
+  const [selectedBurndownSprintId, setSelectedBurndownSprintId] = useState<number | null>(null);
 
   // Filter trong Sprint Tasks view
   const [sprintTaskSearch, setSprintTaskSearch] = useState('');
@@ -501,19 +504,109 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     return matchSprint && matchMember && matchStatus && matchSearch;
   });
 
-  // Burndown chart data demo
-  const burndownBars = [
-    { day: 1, height: '80%', isHighlight: false },
-    { day: 2, height: '80%', isHighlight: false },
-    { day: 3, height: '70%', isHighlight: false },
-    { day: 4, height: '58%', isHighlight: false },
-    { day: 5, height: '50%', isHighlight: false },
-    { day: 6, height: '42%', isHighlight: true },
-    { day: 7, height: '32%', isHighlight: false },
-    { day: 8, height: '22%', isHighlight: false },
-    { day: 9, height: '14%', isHighlight: false },
-    { day: 10, height: '6%', isHighlight: false },
-  ];
+  // Xác định sprint để hiển thị ở tab "Sprint hiện tại & Burndown" (Dữ liệu 100% thực tế)
+  const activeSprint = sprints.find((s) => s.status === 'ACTIVE');
+  const currentSprint = (selectedBurndownSprintId ? sprints.find((s) => s.id === selectedBurndownSprintId) : null)
+    || activeSprint
+    || (sprints.length > 0 ? sprints[0] : null);
+
+  // Số liệu thực tế của currentSprint
+  const currentSprintTasks = currentSprint ? tasks.filter((t) => t.sprintId === currentSprint.id) : [];
+  const currentSprintTotalTasks = currentSprintTasks.length;
+  const currentSprintTodoTasks = currentSprintTasks.filter((t) => t.status === 'TO_DO' || (!t.status));
+  const currentSprintInProgressTasks = currentSprintTasks.filter((t) => t.status === 'IN_PROGRESS');
+  const currentSprintDoneTasks = currentSprintTasks.filter((t) => t.status === 'DONE');
+  const currentSprintRemainingTasks = currentSprintTotalTasks - currentSprintDoneTasks.length;
+
+  const currentSprintProgress = currentSprintTotalTasks > 0
+    ? Math.round((currentSprintDoneTasks.length / currentSprintTotalTasks) * 100)
+    : (currentSprint?.status === 'COMPLETED' ? 100 : 0);
+
+  // Tính số ngày và hạn chót thực tế
+  let sprintDurationDays = 0;
+  let sprintDurationText = 'Chưa đặt lịch';
+  let daysRemainingText = 'Không thời hạn';
+  let daysRemainingCount: number | null = null;
+  let isSprintOverdue = false;
+  let elapsedDays = 1;
+
+  if (currentSprint) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (currentSprint.startDate && currentSprint.endDate) {
+      const start = new Date(currentSprint.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(currentSprint.endDate);
+      end.setHours(0, 0, 0, 0);
+
+      sprintDurationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
+      sprintDurationText = `${sprintDurationDays} ngày (${start.toLocaleDateString('vi-VN')} - ${end.toLocaleDateString('vi-VN')})`;
+
+      if (today < start) {
+        elapsedDays = 0;
+      } else {
+        elapsedDays = Math.min(sprintDurationDays, Math.max(1, Math.round((today.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1));
+      }
+    }
+
+    if (currentSprint.status === 'COMPLETED') {
+      daysRemainingText = 'Đã hoàn thành';
+    } else if (currentSprint.endDate) {
+      const end = new Date(currentSprint.endDate);
+      end.setHours(0, 0, 0, 0);
+      daysRemainingCount = Math.ceil((end.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+      if (daysRemainingCount < 0) {
+        isSprintOverdue = true;
+        daysRemainingText = `Quá hạn ${Math.abs(daysRemainingCount)} ngày`;
+      } else if (daysRemainingCount === 0) {
+        daysRemainingText = 'Hôm nay kết thúc';
+      } else {
+        daysRemainingText = `${daysRemainingCount} ngày còn lại`;
+      }
+    }
+  }
+
+  // Dữ liệu Burndown chart động từ số liệu thực
+  const burndownChartBars = useMemo(() => {
+    if (!currentSprint || currentSprintTotalTasks === 0) return [];
+    
+    const barCount = sprintDurationDays > 0 ? Math.min(Math.max(sprintDurationDays, 5), 14) : 10;
+    const bars = [];
+    
+    for (let i = 1; i <= barCount; i++) {
+      let remainingEst = 0;
+      let isHighlight = false;
+
+      if (elapsedDays === 0) {
+        remainingEst = currentSprintTotalTasks;
+      } else if (i <= elapsedDays) {
+        const step = (currentSprintTotalTasks - currentSprintRemainingTasks) / Math.max(1, elapsedDays);
+        remainingEst = Math.max(0, Math.round(currentSprintTotalTasks - (step * (i - 1))));
+        if (i === elapsedDays) {
+          remainingEst = currentSprintRemainingTasks;
+          isHighlight = true;
+        }
+      } else {
+        const remainingSteps = barCount - elapsedDays;
+        const futureStep = currentSprintRemainingTasks / Math.max(1, remainingSteps);
+        remainingEst = Math.max(0, Math.round(currentSprintRemainingTasks - (futureStep * (i - elapsedDays))));
+      }
+
+      const heightPercent = currentSprintTotalTasks > 0
+        ? Math.max(8, Math.round((remainingEst / currentSprintTotalTasks) * 100))
+        : 8;
+
+      bars.push({
+        day: i,
+        remaining: remainingEst,
+        height: `${heightPercent}%`,
+        isHighlight,
+      });
+    }
+    return bars;
+  }, [currentSprint, currentSprintTotalTasks, currentSprintRemainingTasks, sprintDurationDays, elapsedDays]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -1252,61 +1345,336 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             </div>
           )}
 
-          {/* TAB 3: SPRINT HIỆN TẠI & BURNDOWN */}
+          {/* TAB 3: SPRINT HIỆN TẠI & BURNDOWN (100% DỮ LIỆU THỰC TẾ) */}
           {activeTab === 'currentSprint' && (
             <div className="space-y-6">
-              {/* Metric KPI Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">Sprint 1</div>
-                  <div className="text-[11px] text-gray-500 mt-1">10 ngày làm việc</div>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-                  <div className="text-2xl sm:text-3xl font-bold text-emerald-600">68%</div>
-                  <div className="text-[11px] text-gray-500 mt-1">Tiến độ sprint</div>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">12</div>
-                  <div className="text-[11px] text-gray-500 mt-1">Thẻ công việc</div>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-                  <div className="text-2xl sm:text-3xl font-bold text-amber-600">3</div>
-                  <div className="text-[11px] text-gray-500 mt-1">Ngày còn lại</div>
-                </div>
-              </div>
-
-              {/* Burndown Chart Card */}
-              <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-900">Biểu đồ Burndown — Tiến độ hoàn thành</h3>
+              {!currentSprint ? (
+                <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-xs space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                    <Layers size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Dự án chưa có Sprint nào</h3>
+                    <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                      Tạo Sprint để phân kỳ công việc, quản lý chu kỳ phát triển và theo dõi tiến độ với biểu đồ Burndown.
+                    </p>
+                  </div>
                   <button
-                    onClick={() => setActiveTab('sprints')}
-                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold shadow-xs cursor-pointer"
+                    onClick={() => setIsCreateSprintOpen(true)}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                   >
-                    Xem tất cả sprint
+                    <Plus size={16} />
+                    <span>Tạo Sprint đầu tiên</span>
                   </button>
                 </div>
-
-                <div className="h-44 flex items-end justify-between gap-2 sm:gap-3 px-2 pt-6">
-                  {burndownBars.map((bar) => (
-                    <div key={bar.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                      <div
-                        style={{ height: bar.height }}
-                        className={`w-full max-w-[42px] rounded-lg transition-all duration-300 ${
-                          bar.isHighlight
-                            ? 'bg-emerald-600 shadow-sm'
-                            : 'bg-emerald-200/90 hover:bg-emerald-300'
-                        }`}
-                      ></div>
-                      <span className="text-[10px] text-gray-400 font-medium">{bar.day}</span>
+              ) : (
+                <>
+                  {/* Sprint Header & Selector Bar */}
+                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Layers size={20} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-bold text-gray-900">{currentSprint.name}</h2>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              currentSprint.status === 'ACTIVE'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : currentSprint.status === 'COMPLETED'
+                                ? 'bg-gray-100 text-gray-700'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {currentSprint.status === 'ACTIVE'
+                              ? 'Đang chạy'
+                              : currentSprint.status === 'COMPLETED'
+                              ? 'Đã xong'
+                              : 'Kế hoạch'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {currentSprint.goal || 'Không có mục tiêu cụ thể'}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
 
-                <div className="pt-2 border-t border-gray-100 text-xs text-gray-500">
-                  Còn <strong className="text-gray-800 font-semibold">2 điểm</strong> công việc chưa hoàn thành — nhịp độ hiện tại đủ để chốt sprint đúng hạn.
-                </div>
-              </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {sprints.length > 1 && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <span className="text-[11px] text-gray-400 font-medium">Chọn sprint:</span>
+                          <select
+                            value={currentSprint.id}
+                            onChange={(e) => setSelectedBurndownSprintId(Number(e.target.value))}
+                            className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                          >
+                            {sprints.map((sp) => (
+                              <option key={sp.id} value={sp.id}>
+                                {sp.name} ({sp.status === 'ACTIVE' ? 'Đang chạy' : sp.status === 'COMPLETED' ? 'Đã xong' : 'Kế hoạch'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setCreateTaskSprintId(currentSprint.id);
+                          setIsCreateTaskOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        <span>Giao việc vào Sprint</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metric KPI Cards (Dữ liệu thực tế 100%) */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentSprint.name}</div>
+                      <div className="text-[11px] text-gray-500 mt-1">{sprintDurationText}</div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                      <div className={`text-xl sm:text-2xl font-bold ${
+                        currentSprintProgress >= 70
+                          ? 'text-emerald-600'
+                          : currentSprintProgress >= 30
+                          ? 'text-amber-600'
+                          : 'text-blue-600'
+                      }`}>
+                        {currentSprintProgress}%
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-1">
+                        Tiến độ ({currentSprintDoneTasks.length}/{currentSprintTotalTasks} việc)
+                      </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900">{currentSprintTotalTasks}</div>
+                      <div className="text-[11px] text-gray-500 mt-1">
+                        Cần làm: {currentSprintTodoTasks.length} · Đang làm: {currentSprintInProgressTasks.length} · Xong: {currentSprintDoneTasks.length}
+                      </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
+                      <div className={`text-xl sm:text-2xl font-bold ${
+                        isSprintOverdue
+                          ? 'text-red-600'
+                          : daysRemainingCount !== null && daysRemainingCount <= 3
+                          ? 'text-amber-600'
+                          : 'text-gray-900'
+                      }`}>
+                        {daysRemainingText}
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-1">
+                        Hạn chót: {currentSprint.endDate || 'Chưa đặt'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Burndown Chart Card */}
+                  <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">Biểu đồ Burndown — Tiến độ hoàn thành thực tế</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Số lượng thẻ công việc còn lại theo chu kỳ thời gian của {currentSprint.name}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('sprints')}
+                        className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+                      >
+                        Xem tất cả sprint
+                      </button>
+                    </div>
+
+                    {currentSprintTotalTasks === 0 ? (
+                      <div className="py-12 text-center border border-dashed border-gray-200 rounded-2xl space-y-3">
+                        <div className="w-12 h-12 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center mx-auto">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-700">Sprint này chưa có thẻ công việc nào</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            Hãy gán công việc vào sprint để theo dõi biểu đồ Burndown.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setCreateTaskSprintId(currentSprint.id);
+                            setIsCreateTaskOpen(true);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>Giao việc ngay</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h-48 flex items-end justify-between gap-1.5 sm:gap-3 px-2 pt-6">
+                          {burndownChartBars.map((bar) => (
+                            <div key={bar.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
+                              {/* Hover Tooltip */}
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 px-2 py-1 bg-gray-900 text-white text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none z-10 shadow-md">
+                                Ngày {bar.day}: Còn {bar.remaining} thẻ
+                              </div>
+
+                              <div
+                                style={{ height: bar.height }}
+                                className={`w-full max-w-[42px] rounded-lg transition-all duration-300 ${
+                                  bar.isHighlight
+                                    ? 'bg-emerald-600 shadow-md ring-2 ring-emerald-600/30'
+                                    : 'bg-emerald-200/90 hover:bg-emerald-300'
+                                }`}
+                              ></div>
+                              <span className={`text-[10px] font-medium ${
+                                bar.isHighlight ? 'text-emerald-700 font-bold' : 'text-gray-400'
+                              }`}>
+                                N{bar.day}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Breakdown pills & conclusion */}
+                        <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg font-medium text-[11px]">
+                              Cần làm: <strong className="text-gray-900">{currentSprintTodoTasks.length}</strong>
+                            </span>
+                            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium text-[11px]">
+                              Đang làm: <strong className="text-blue-900">{currentSprintInProgressTasks.length}</strong>
+                            </span>
+                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-medium text-[11px]">
+                              Hoàn thành: <strong className="text-emerald-900">{currentSprintDoneTasks.length}</strong>
+                            </span>
+                          </div>
+
+                          <div className="text-gray-500 font-medium text-right">
+                            {currentSprintRemainingTasks === 0 ? (
+                              <span className="text-emerald-700 font-semibold">
+                                🎉 Tuyệt vời! Tất cả công việc trong sprint này đã hoàn thành.
+                              </span>
+                            ) : isSprintOverdue ? (
+                              <span className="text-red-600 font-semibold">
+                                ⚠️ Sprint đã quá hạn nhưng vẫn còn {currentSprintRemainingTasks} thẻ công việc chưa hoàn thành.
+                              </span>
+                            ) : (
+                              <span>
+                                Còn <strong className="text-gray-900 font-semibold">{currentSprintRemainingTasks} thẻ</strong> chưa xong ({currentSprintProgress}% hoàn thành).
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Danh sách các công việc trong Sprint */}
+                  <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={18} className="text-emerald-600" />
+                        <h3 className="text-sm font-bold text-gray-900">
+                          Công việc thuộc {currentSprint.name} ({currentSprintTasks.length})
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCreateTaskSprintId(currentSprint.id);
+                          setIsCreateTaskOpen(true);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Plus size={14} />
+                        <span>+ Thêm việc</span>
+                      </button>
+                    </div>
+
+                    {currentSprintTasks.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-gray-400">
+                        Chưa có thẻ công việc nào thuộc sprint này.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {currentSprintTasks.map((t) => (
+                          <div
+                            key={t.id}
+                            className="p-3.5 bg-gray-50/70 hover:bg-emerald-50/40 rounded-2xl border border-gray-100 transition-all flex items-center justify-between gap-3 group"
+                          >
+                            <div
+                              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                              onClick={() => handleOpenTaskDetail(t)}
+                            >
+                              <div className="w-8 h-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 text-gray-500 font-mono text-[10px] font-bold">
+                                #{t.id}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors truncate">
+                                    {t.title}
+                                  </span>
+                                  {t.taskCode && (
+                                    <span className="text-[10px] font-mono text-gray-400">
+                                      [{t.taskCode}]
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500">
+                                  {t.assigneeName && (
+                                    <span className="text-gray-600">👤 {t.assigneeName}</span>
+                                  )}
+                                  {t.estimate && (
+                                    <span className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">
+                                      ⏱️ {t.estimate}
+                                    </span>
+                                  )}
+                                  {t.dueDate && (
+                                    <span>📅 {t.dueDate}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span
+                                className={`px-2.5 py-1 rounded-xl text-[10px] font-semibold ${
+                                  t.status === 'DONE'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : t.status === 'IN_PROGRESS'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : t.status === 'CLOSED'
+                                    ? 'bg-gray-200 text-gray-700'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {t.status === 'DONE'
+                                  ? 'Hoàn thành'
+                                  : t.status === 'IN_PROGRESS'
+                                  ? 'Đang làm'
+                                  : t.status === 'CLOSED'
+                                  ? 'Đã đóng'
+                                  : 'Cần làm'}
+                              </span>
+
+                              <button
+                                onClick={() => handleOpenEditTask(t)}
+                                className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                title="Chỉnh sửa công việc"
+                              >
+                                <Edit3 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
