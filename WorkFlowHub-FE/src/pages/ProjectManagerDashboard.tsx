@@ -6,13 +6,17 @@ import {
   ProjectMemberService, 
   TaskService 
 } from '../services/api';
-import type { Project, Sprint, ProjectMember, Task } from '../types';
+import type { Project, Sprint, ProjectMember, Task, Subtask } from '../types';
 import { CreateSprintModal } from '../components/CreateSprintModal';
 import { EditSprintModal } from '../components/EditSprintModal';
 import { AddProjectMemberModal } from '../components/AddProjectMemberModal';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { SubtaskList } from '../components/SubtaskList';
+import { TaskDetailModal } from '../components/TaskDetailModal';
+import { EditTaskModal } from '../components/EditTaskModal';
+import { SubtaskFormModal } from '../components/SubtaskFormModal';
+import { SubtaskService } from '../services/subtaskService';
 import { 
   FolderKanban, 
   Sparkles, 
@@ -29,6 +33,7 @@ import {
   FolderPlus, 
   Loader2, 
   Edit3,
+  Eye,
   Search,
   Filter,
   Lock,
@@ -89,6 +94,68 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [createTaskSprintId, setCreateTaskSprintId] = useState<number | null>(null);
+
+  // Modals: Task Detail, Edit Task, Subtask Form
+  const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
+  const [selectedDetailSubtask, setSelectedDetailSubtask] = useState<Subtask | null>(null);
+  const [parentTaskForSubtask, setParentTaskForSubtask] = useState<Task | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+
+  const [subtaskFormTaskId, setSubtaskFormTaskId] = useState<number | null>(null);
+  const [editingSubtaskItem, setEditingSubtaskItem] = useState<Subtask | null>(null);
+  const [isSubtaskFormOpen, setIsSubtaskFormOpen] = useState(false);
+
+  const handleOpenTaskDetail = (task: Task) => {
+    setSelectedDetailTask(task);
+    setSelectedDetailSubtask(null);
+    setParentTaskForSubtask(null);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleOpenSubtaskDetail = (st: Subtask, pTask: Task) => {
+    setSelectedDetailSubtask(st);
+    setParentTaskForSubtask(pTask);
+    setSelectedDetailTask(null);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleOpenEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditTaskModalOpen(true);
+  };
+
+  const handleOpenCreateSubtask = (task: Task) => {
+    setSubtaskFormTaskId(task.id);
+    setEditingSubtaskItem(null);
+    setIsSubtaskFormOpen(true);
+  };
+
+  const handleOpenEditSubtask = (st: Subtask, parentTaskId: number) => {
+    setSubtaskFormTaskId(parentTaskId);
+    setEditingSubtaskItem(st);
+    setIsSubtaskFormOpen(true);
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    if (selectedDetailTask?.id === updatedTask.id) {
+      setSelectedDetailTask(updatedTask);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: number | string, parentTaskId: number) => {
+    await SubtaskService.deleteSubtask(parentTaskId, subtaskId);
+    if (selectedDetailSubtask?.id === subtaskId) {
+      if (parentTaskForSubtask) {
+        handleOpenTaskDetail(parentTaskForSubtask);
+      } else {
+        setIsDetailModalOpen(false);
+      }
+    }
+  };
 
   // Notifications
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -796,11 +863,19 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                 <div className="min-w-0 space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {/* MÃ TASK */}
-                                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    <span
+                                      onClick={() => handleOpenTaskDetail(task)}
+                                      className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer transition-colors"
+                                      title="Xem chi tiết nhiệm vụ"
+                                    >
                                       #{task.id}
                                     </span>
 
-                                    <span className={`text-xs font-bold ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                    <span
+                                      onClick={() => handleOpenTaskDetail(task)}
+                                      className={`text-xs font-bold cursor-pointer hover:text-emerald-700 transition-colors ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}
+                                      title="Bấm để xem chi tiết"
+                                    >
                                       {task.title}
                                     </span>
 
@@ -886,6 +961,26 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                     <option value="CLOSED">Đã đóng (Closed)</option>
                                   </select>
 
+                                  {/* Xem chi tiết */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenTaskDetail(task)}
+                                    className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Xem chi tiết nhiệm vụ"
+                                  >
+                                    <Eye size={15} />
+                                  </button>
+
+                                  {/* Chỉnh sửa */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTask(task)}
+                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Chỉnh sửa nhiệm vụ"
+                                  >
+                                    <Edit3 size={15} />
+                                  </button>
+
                                   {/* Nút xóa task: CHỈ PM MỚI CÓ QUYỀN XÓA (Thành viên không được xóa, chỉ chuyển status sang CLOSED) */}
                                   {isPM && (
                                     <button
@@ -902,7 +997,12 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               {/* Khu vực tạo và quản lý Subtasks (Requirement 4) */}
                               {isExpanded && (
                                 <div className="pt-2 pl-4 animate-in fade-in">
-                                  <SubtaskList taskId={task.id} compact />
+                                  <SubtaskList
+                                    taskId={task.id}
+                                    members={members}
+                                    onSelectSubtask={(st) => handleOpenSubtaskDetail(st, task)}
+                                    compact
+                                  />
                                 </div>
                               )}
                             </div>
@@ -1360,11 +1460,19 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               {/* MÃ TASK */}
-                              <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <span
+                                onClick={() => handleOpenTaskDetail(task)}
+                                className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer transition-colors"
+                                title="Xem chi tiết nhiệm vụ"
+                              >
                                 #{task.id}
                               </span>
 
-                              <span className={`text-xs font-bold ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              <span
+                                onClick={() => handleOpenTaskDetail(task)}
+                                className={`text-xs font-bold cursor-pointer hover:text-emerald-700 transition-colors ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}
+                                title="Bấm để xem chi tiết"
+                              >
                                 {task.title}
                               </span>
 
@@ -1456,6 +1564,26 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <option value="CLOSED">Đã đóng (Closed)</option>
                             </select>
 
+                            {/* Nút Xem chi tiết */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTaskDetail(task)}
+                              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xem chi tiết nhiệm vụ"
+                            >
+                              <Eye size={15} />
+                            </button>
+
+                            {/* Nút Chỉnh sửa */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTask(task)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Chỉnh sửa nhiệm vụ"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+
                             {/* Nút xóa task: CHỈ PM MỚI CÓ QUYỀN XÓA (Thành viên không thể xóa, chỉ chuyển sang CLOSED) */}
                             {isPM && (
                               <button
@@ -1472,7 +1600,12 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         {/* Khu vực tạo và quản lý Subtasks (Requirement 4) */}
                         {isExpanded && (
                           <div className="pt-2 pl-4 animate-in fade-in">
-                            <SubtaskList taskId={task.id} compact />
+                            <SubtaskList
+                              taskId={task.id}
+                              members={members}
+                              onSelectSubtask={(st) => handleOpenSubtaskDetail(st, task)}
+                              compact
+                            />
                           </div>
                         )}
                       </div>
@@ -1659,6 +1792,78 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         onClose={() => setIsCreateProjectOpen(false)}
         onSuccess={handleProjectCreated}
       />
+
+      {/* Modal Xem Chi Tiết Task / Subtask */}
+      <TaskDetailModal
+        task={selectedDetailTask}
+        subtask={selectedDetailSubtask}
+        parentTask={parentTaskForSubtask}
+        members={members}
+        sprints={sprints}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedDetailTask(null);
+          setSelectedDetailSubtask(null);
+          setParentTaskForSubtask(null);
+        }}
+        onEditTask={(t) => {
+          setIsDetailModalOpen(false);
+          handleOpenEditTask(t);
+        }}
+        onEditSubtask={(st, pTaskId) => {
+          setIsDetailModalOpen(false);
+          handleOpenEditSubtask(st, pTaskId);
+        }}
+        onDeleteTask={async (taskId) => {
+          const t = tasks.find((tk) => tk.id === taskId);
+          await handleDeleteTask(taskId, t?.title || 'nhiệm vụ');
+          setIsDetailModalOpen(false);
+        }}
+        onDeleteSubtask={handleDeleteSubtask}
+        onSelectSubtask={(st, pTask) => {
+          handleOpenSubtaskDetail(st, pTask);
+        }}
+        onBackToParentTask={(pTask) => {
+          handleOpenTaskDetail(pTask);
+        }}
+        onCreateSubtaskForTask={(t) => {
+          handleOpenCreateSubtask(t);
+        }}
+      />
+
+      {/* Modal Chỉnh Sửa Task */}
+      <EditTaskModal
+        task={editingTask}
+        members={members}
+        sprints={sprints}
+        isOpen={isEditTaskModalOpen}
+        onClose={() => {
+          setIsEditTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        onSuccess={handleTaskUpdated}
+      />
+
+      {/* Modal Tạo / Chỉnh Sửa Subtask */}
+      {subtaskFormTaskId && (
+        <SubtaskFormModal
+          taskId={subtaskFormTaskId}
+          subtask={editingSubtaskItem}
+          members={members}
+          isOpen={isSubtaskFormOpen}
+          onClose={() => {
+            setIsSubtaskFormOpen(false);
+            setSubtaskFormTaskId(null);
+            setEditingSubtaskItem(null);
+          }}
+          onSuccess={(saved) => {
+            if (selectedDetailSubtask?.id === saved.id) {
+              setSelectedDetailSubtask(saved);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

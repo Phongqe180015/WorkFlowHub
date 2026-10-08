@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TaskService } from '../services/api';
 import type { Task, ProjectMember, Sprint } from '../types';
-import { X, Calendar, Loader2, AlertCircle, CheckSquare, ShieldCheck, User, Layers } from 'lucide-react';
+import { X, Calendar, Loader2, AlertCircle, CheckSquare, ShieldCheck, User, Layers, Clock } from 'lucide-react';
 
 interface CreateTaskModalProps {
   projectId: number;
@@ -30,6 +30,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [sprintId, setSprintId] = useState<string>(initialSprintId ? String(initialSprintId) : '');
   const [priority, setPriority] = useState<string>('MEDIUM');
   const [status, setStatus] = useState<string>('TO_DO');
+  const [estimate, setEstimate] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>(getTodayStr());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority,
         status,
         dueDate: dueDate || undefined,
+        estimate: estimate.trim() || undefined,
       });
 
       // Reset form
@@ -71,6 +73,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSprintId('');
       setPriority('MEDIUM');
       setStatus('TO_DO');
+      setEstimate('');
       setDueDate(getTodayStr());
       setLoading(false);
       onSuccess(createdTask);
@@ -234,18 +237,35 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
-              <Calendar size={13} className="text-gray-400" />
-              <span>Hạn hoàn thành (Deadline)</span>
-            </label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
-              disabled={loading}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
+                <Clock size={13} className="text-gray-400" />
+                <span>Ước lượng (EST)</span>
+              </label>
+              <input
+                type="text"
+                value={estimate}
+                onChange={(e) => setEstimate(e.target.value)}
+                placeholder="VD: 4h, 2d, 5pts..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
+                <Calendar size={13} className="text-gray-400" />
+                <span>Hạn hoàn thành (Deadline)</span>
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">

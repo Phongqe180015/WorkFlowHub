@@ -12,8 +12,15 @@ import type {
   CreateSprintPayload,
   Task,
   CreateTaskPayload,
+  CreateSubtaskPayload,
+  UpdateSubtaskPayload,
   ActivityLog
 } from '../types';
+
+const ERROR_CODE_TRANSLATIONS: Record<string, string> = {
+  bad_request_data_missed_field: 'Vui lòng điền đầy đủ các thông tin bắt buộc.',
+  bad_request_data_length_invalid: 'Độ dài ký tự nhập vào không hợp lệ hoặc vượt quá giới hạn.',
+};
 
 const ENV_API_URL = import.meta.env.VITE_API_URL;
 const BASE_URL = ENV_API_URL ? `${ENV_API_URL.replace(/\/$/, '')}/api/v1` : '/api/v1';
@@ -57,7 +64,10 @@ export class ApiClient {
       let errorMessage = `Yêu cầu thất bại (${response.status})`;
       try {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
+        const rawMsg = errorData.message || errorData.error;
+        if (rawMsg) {
+          errorMessage = ERROR_CODE_TRANSLATIONS[rawMsg] || rawMsg;
+        }
       } catch {
         // Body is not json
       }
@@ -412,6 +422,14 @@ export const TaskService = {
   },
 
   /**
+   * GET /api/v1/tasks/{id}
+   */
+  async getTaskById(id: number): Promise<Task> {
+    const res = await ApiClient.get<ApiResponse<Task>>(`/tasks/${id}`);
+    return res.data;
+  },
+
+  /**
    * PUT /api/v1/tasks/{id}
    */
   async updateTask(id: number, payload: Partial<CreateTaskPayload>): Promise<Task> {
@@ -472,9 +490,17 @@ export const SubtaskApiService = {
   },
 
   /**
+   * GET /api/v1/subtasks/{id}
+   */
+  async getSubtaskById(id: number | string): Promise<any> {
+    const res = await ApiClient.get<ApiResponse<any>>(`/subtasks/${id}`);
+    return res.data;
+  },
+
+  /**
    * POST /api/v1/subtasks
    */
-  async createSubtask(payload: { taskId: number; title: string; description?: string }): Promise<any> {
+  async createSubtask(payload: CreateSubtaskPayload): Promise<any> {
     const res = await ApiClient.post<ApiResponse<any>>('/subtasks', payload);
     return res.data;
   },
@@ -482,7 +508,7 @@ export const SubtaskApiService = {
   /**
    * PUT /api/v1/subtasks/{id}
    */
-  async updateSubtask(id: number | string, payload: { title?: string; description?: string; isCompleted?: boolean }): Promise<any> {
+  async updateSubtask(id: number | string, payload: UpdateSubtaskPayload): Promise<any> {
     const res = await ApiClient.put<ApiResponse<any>>(`/subtasks/${id}`, payload);
     return res.data;
   },

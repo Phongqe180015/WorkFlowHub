@@ -25,6 +25,7 @@ public class TaskResponse {
     private String assigneeName;
     private String title;
     private String description;
+    private String estimate;
     private String priority;
     private String status;
     private LocalDate dueDate;

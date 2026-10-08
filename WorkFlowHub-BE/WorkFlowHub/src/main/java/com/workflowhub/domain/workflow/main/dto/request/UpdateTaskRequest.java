@@ -1,5 +1,6 @@
 package com.workflowhub.domain.workflow.main.dto.request;
 
+import com.workflowhub.common.constant.MessageCode;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,19 +23,23 @@ public class UpdateTaskRequest {
 
     private Long assigneeId;
 
-    @Size(max = 255, message = "Title cannot exceed 255 characters")
+    @Size(max = 255, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String title;
 
     private String description;
 
-    @Size(max = 50, message = "Priority cannot exceed 50 characters")
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
+    private String estimate;
+
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String priority;
 
-    @Size(max = 50, message = "Status cannot exceed 50 characters")
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String status;
 
     private LocalDate dueDate;
 
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String taskCode;
 
     private Boolean isDeleted;

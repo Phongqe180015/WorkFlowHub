@@ -1,0 +1,290 @@
+import React, { useState, useEffect } from 'react';
+import { SubtaskService } from '../services/subtaskService';
+import type { Subtask, ProjectMember } from '../types';
+import { X, Calendar, Loader2, AlertCircle, ListChecks, User, Clock, Flag, CheckCircle2 } from 'lucide-react';
+
+interface SubtaskFormModalProps {
+  taskId: number;
+  subtask?: Subtask | null; // If provided, modal is in EDIT mode; if null/undefined, CREATE mode
+  members?: ProjectMember[];
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (savedSubtask: Subtask) => void;
+}
+
+export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
+  taskId,
+  subtask,
+  members = [],
+  isOpen,
+  onClose,
+  onSuccess,
+}) => {
+  const isEdit = Boolean(subtask);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [assigneeId, setAssigneeId] = useState<string>('');
+  const [estimate, setEstimate] = useState<string>('');
+  const [priority, setPriority] = useState<string>('MEDIUM');
+  const [dueDate, setDueDate] = useState<string>('');
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (subtask) {
+        setTitle(subtask.title || '');
+        setDescription(subtask.description || '');
+        setAssigneeId(subtask.assigneeId ? String(subtask.assigneeId) : '');
+        setEstimate(subtask.estimate || '');
+        setPriority(subtask.priority || 'MEDIUM');
+        setDueDate(subtask.dueDate || '');
+        setIsCompleted(Boolean(subtask.isCompleted));
+      } else {
+        setTitle('');
+        setDescription('');
+        setAssigneeId('');
+        setEstimate('');
+        setPriority('MEDIUM');
+        setDueDate('');
+        setIsCompleted(false);
+      }
+      setError(null);
+    }
+  }, [isOpen, subtask]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError('Vui lòng nhập tiêu đề việc phụ (Subtask)');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const selectedMember = members.find((m) => String(m.userId) === assigneeId);
+
+    try {
+      if (isEdit && subtask) {
+        const updated = await SubtaskService.updateSubtaskDetails(taskId, subtask.id, {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          assigneeId: assigneeId ? Number(assigneeId) : null,
+          assigneeName: selectedMember ? (selectedMember.userName || `User #${selectedMember.userId}`) : undefined,
+          estimate: estimate.trim() || undefined,
+          priority,
+          dueDate: dueDate || undefined,
+          isCompleted,
+        });
+        if (updated) {
+          onSuccess(updated);
+        }
+      } else {
+        const created = await SubtaskService.addSubtask(taskId, {
+          taskId,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          assigneeId: assigneeId ? Number(assigneeId) : null,
+          assigneeName: selectedMember ? (selectedMember.userName || `User #${selectedMember.userId}`) : undefined,
+          estimate: estimate.trim() || undefined,
+          priority,
+          dueDate: dueDate || undefined,
+          isCompleted,
+        });
+        onSuccess(created);
+      }
+      onClose();
+    } catch (err: any) {
+      console.error('Lỗi khi lưu subtask:', err);
+      setError(err.message || 'Không thể lưu việc phụ. Vui lòng thử lại!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-gray-100 max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          disabled={loading}
+          className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <ListChecks size={22} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isEdit ? 'Chỉnh sửa việc phụ (Subtask)' : 'Thêm việc phụ chi tiết (Subtask)'}
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {isEdit ? `Cập nhật thông tin chi tiết cho subtask #${subtask?.id}` : `Tạo checklist chi tiết cho Task #${taskId}`}
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Tiêu đề việc phụ <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="VD: Thiết kế schema database, Viết unit test..."
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Mô tả chi tiết
+            </label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Mô tả cụ thể phạm vi công việc của subtask này..."
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 resize-none"
+              disabled={loading}
+            />
+          </div>
+
+          {/* Giao cho thành viên */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <User size={13} className="text-emerald-600" />
+                <span>Giao cho thành viên</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-normal">
+                (Thành viên dự án)
+              </span>
+            </label>
+            <select
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
+              disabled={loading}
+            >
+              <option value="">-- Chưa gán (Để trống) --</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.userName || `User #${member.userId}`} {member.userEmail ? `(${member.userEmail})` : ''} - [{member.roleName || 'Member'}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Ước lượng thời gian EST */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
+                <Clock size={13} className="text-gray-400" />
+                <span>Ước lượng (EST)</span>
+              </label>
+              <input
+                type="text"
+                value={estimate}
+                onChange={(e) => setEstimate(e.target.value)}
+                placeholder="VD: 2h, 4h, 1d, 3pts..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Độ ưu tiên */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
+                <Flag size={13} className="text-gray-400" />
+                <span>Độ ưu tiên</span>
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
+                disabled={loading}
+              >
+                <option value="LOW">Thấp (Low)</option>
+                <option value="MEDIUM">Trung bình (Medium)</option>
+                <option value="HIGH">Cao (High)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Hạn hoàn thành */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
+              <Calendar size={13} className="text-gray-400" />
+              <span>Hạn hoàn thành (Deadline)</span>
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
+              disabled={loading}
+            />
+          </div>
+
+          {/* Trạng thái hoàn thành (khi Edit) */}
+          {isEdit && (
+            <div className="pt-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={isCompleted}
+                  onChange={(e) => setIsCompleted(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                  disabled={loading}
+                />
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className={isCompleted ? 'text-emerald-600' : 'text-gray-400'} />
+                  <span>Đã hoàn thành việc phụ này</span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              {loading && <Loader2 size={15} className="animate-spin" />}
+              <span>{isEdit ? 'Cập nhật Subtask' : 'Tạo việc phụ'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

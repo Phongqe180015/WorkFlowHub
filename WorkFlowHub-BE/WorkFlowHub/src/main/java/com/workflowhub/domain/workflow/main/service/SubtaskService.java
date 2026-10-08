@@ -25,7 +25,9 @@ public class SubtaskService implements ISubtaskService {
     private static final RsqlSpecificationBuilder<SubtaskEntity> RSQL_BUILDER =
             RsqlSpecificationBuilder.forEntity(SubtaskEntity.class)
                     .field("taskId", "task.id", Long.class)
+                    .field("assigneeId", "assignee.id", Long.class)
                     .field("title", "title", String.class)
+                    .field("priority", "priority", String.class)
                     .field("isCompleted", "isCompleted", Boolean.class)
                     .build();
 
