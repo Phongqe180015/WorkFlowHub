@@ -1,0 +1,8 @@
+
+ALTER TABLE workflow.subtasks
+    ADD COLUMN IF NOT EXISTS assignee_id BIGINT REFERENCES workflow.users(id),
+    ADD COLUMN IF NOT EXISTS estimate VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS priority VARCHAR(50) DEFAULT 'MEDIUM',
+    ADD COLUMN IF NOT EXISTS due_date DATE;
+
+ALTER TABLE workflow.tasks ADD COLUMN IF NOT EXISTS estimate VARCHAR(50);

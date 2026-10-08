@@ -1,5 +1,6 @@
 package com.workflowhub.domain.workflow.main.dto.request;
 
+import com.workflowhub.common.constant.MessageCode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,26 +19,30 @@ import java.time.LocalDate;
 @Builder
 public class CreateTaskRequest {
 
-    @NotNull(message = "Project ID is required")
+    @NotNull(message = MessageCode.BAD_REQUEST_DATA_MISSED_FIELD)
     private Long projectId;
 
     private Long sprintId;
 
     private Long assigneeId;
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title cannot exceed 255 characters")
+    @NotBlank(message = MessageCode.BAD_REQUEST_DATA_MISSED_FIELD)
+    @Size(max = 255, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String title;
 
     private String description;
 
-    @Size(max = 50, message = "Priority cannot exceed 50 characters")
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
+    private String estimate;
+
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String priority;
 
-    @Size(max = 50, message = "Status cannot exceed 50 characters")
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String status;
 
     private LocalDate dueDate;
     
+    @Size(max = 50, message = MessageCode.BAD_REQUEST_DATA_LENGTH_INVALID)
     private String taskCode;
 }

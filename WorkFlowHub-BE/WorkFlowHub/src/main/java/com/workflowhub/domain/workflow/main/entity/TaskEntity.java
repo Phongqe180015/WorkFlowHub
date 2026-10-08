@@ -55,4 +55,7 @@ public class TaskEntity extends BaseEntity {
 
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
+
+    @Column(name="estimate", length = 50)
+    private String estimate;
 }

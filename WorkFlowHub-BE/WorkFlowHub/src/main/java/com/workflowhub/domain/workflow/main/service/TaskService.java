@@ -17,6 +17,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.workflowhub.common.constant.CharacterConstants.SEMICOLON;
+import static com.workflowhub.common.constant.MessageConstants.TASK;
+
 @Service
 @RequiredArgsConstructor
 public class TaskService implements ITaskService {
@@ -28,10 +31,10 @@ public class TaskService implements ITaskService {
                     .field("sprintId",   "sprint.id",   Long.class)   // ManyToOne dot-path
                     .field("taskCode",   "taskCode",    String.class)
                     .field("status",     "status",      String.class)
+                    .field("priority",   "priority",    String.class)
                     .field("isDeleted",  "isDeleted",   Boolean.class)
                     .build();
-
-    public static final String TASK = "Task";
+    public static final String IS_DELETED_FALSE = "isDeleted==false";
 
     private final ITaskRepository repository;
     private final ITaskMapper taskMapper;
@@ -41,9 +44,9 @@ public class TaskService implements ITaskService {
     public Page<TaskResponse> getPage(String search, Pageable pageable) {
         String effectiveSearch = search;
         if (effectiveSearch == null || !effectiveSearch.contains("isDeleted")) {
-            effectiveSearch = (effectiveSearch == null || effectiveSearch.isBlank())
-                    ? "isDeleted==false"
-                    : effectiveSearch + ";isDeleted==false";
+            effectiveSearch = (ObjectUtils.isEmpty(effectiveSearch))
+                    ? IS_DELETED_FALSE
+                    : effectiveSearch + SEMICOLON + IS_DELETED_FALSE;
         }
         Specification<TaskEntity> spec = RSQL_BUILDER.parse(effectiveSearch);
         return repository.findAll(spec, pageable).map(taskMapper::toResponse);
