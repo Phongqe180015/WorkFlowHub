@@ -17,4 +17,6 @@ public interface IProjectService {
     ProjectResponse updateProject(Long id, UpdateProjectRequest request);
 
     void deleteProject(Long id);
+
+    Page<ProjectResponse> getMyProject(Pageable pageable);
 }

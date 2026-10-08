@@ -61,4 +61,10 @@ public class ProjectController extends BaseController {
         projectService.deleteProject(id);
         return noContent();
     }
+
+    @GetMapping("/my-project")
+    public ApiResponse<PageResponse<ProjectResponse>> getMyProjects(@ParameterObject Pageable pageable) {
+        Page<ProjectResponse> projectResponses = projectService.getMyProject(pageable);
+        return page(projectResponses);
+    }
 }

@@ -2,6 +2,7 @@ package com.workflowhub.domain.master.service;
 
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
+import com.workflowhub.common.util.SecurityUtils;
 import com.workflowhub.domain.master.dto.request.CreateProjectRequest;
 import com.workflowhub.domain.master.dto.request.UpdateProjectRequest;
 import com.workflowhub.domain.master.dto.response.ProjectResponse;
@@ -10,11 +11,14 @@ import com.workflowhub.domain.master.iservice.IProjectService;
 import com.workflowhub.domain.master.mapper.IProjectMapper;
 import com.workflowhub.domain.master.irepository.IProjectRepository;
 import com.workflowhub.domain.workflow.main.dto.request.CreateProjectMemberRequest;
+import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.main.irepository.IProjectMemberRepository;
 import com.workflowhub.domain.workflow.main.iservice.IProjectMemberService;
 import com.workflowhub.domain.workflow.security.entity.RoleEntity;
 import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import lombok.RequiredArgsConstructor;
 import com.workflowhub.common.enums.RoleEnums;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,6 +40,7 @@ public class ProjectService implements IProjectService {
     private final IProjectMapper projectMapper;
     private final IProjectMemberService projectMemberService;
     private final IRoleRepository roleRepository;
+    private final IProjectMemberRepository projectMemberRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,5 +86,37 @@ public class ProjectService implements IProjectService {
             throw NotFoundException.of(PROJECT, id);
         }
         repository.deleteById(id);
+    }
+
+    @Override
+    public Page<ProjectResponse> getMyProject(Pageable pageable) {
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Page<ProjectEntity> projectEntities = repository.findProjectsByUserId(currentUserId, pageable);
+
+        return getProjectResponses(projectEntities, currentUserId);
+    }
+
+    private Page<ProjectResponse> getProjectResponses(Page<ProjectEntity> projectEntities, Long currentUserId) {
+        return projectEntities.map(project -> {
+            ProjectResponse response = projectMapper.toResponse(project);
+
+            setCurrentUserRoleInResponse(currentUserId, project, response);
+
+            if (ObjectUtils.isEmpty(response.getCurrentUserRole()) && project.getOwner().getId().equals(currentUserId)) {
+                response.setCurrentUserRole(RoleEnums.PROJECT_MANAGER.getRoleName());
+            }
+
+            return response;
+        });
+    }
+
+    private void setCurrentUserRoleInResponse(Long currentUserId, ProjectEntity project, ProjectResponse response) {
+        projectMemberRepository.findById(new ProjectMemberId(project.getId(), currentUserId))
+                .ifPresent(pm -> {
+                    if (ObjectUtils.isNotEmpty(pm.getRole())) {
+                        response.setCurrentUserRole(pm.getRole().getName());
+                    }
+                });
     }
 }
