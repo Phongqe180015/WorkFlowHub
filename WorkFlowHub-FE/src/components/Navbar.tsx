@@ -40,13 +40,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
           <a href="#features" className="hover:text-emerald-600 transition-colors">Tính năng</a>
           <a href="#roles" className="hover:text-emerald-600 transition-colors">Phân quyền</a>
-          <a 
-            href="#dashboard" 
-            onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }} 
-            className="hover:text-emerald-600 transition-colors"
-          >
-            Bảng điều khiển
-          </a>
           <a href="#pricing" className="hover:text-emerald-600 transition-colors">Bảng giá</a>
           <a href="#tech" className="hover:text-emerald-600 transition-colors">Công nghệ</a>
         </nav>
