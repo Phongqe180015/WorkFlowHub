@@ -192,6 +192,19 @@ export const ProjectService = {
   },
 
   /**
+   * GET /api/v1/projects/my-project
+   */
+  async getMyProjects(page = 0, size = 50): Promise<Project[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<Project>>>(`/projects/my-project?page=${page}&size=${size}`);
+      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.warn('Failed to fetch my projects:', err);
+      return [];
+    }
+  },
+
+  /**
    * GET /api/v1/projects/{id}
    */
   async getProjectById(id: number): Promise<Project> {

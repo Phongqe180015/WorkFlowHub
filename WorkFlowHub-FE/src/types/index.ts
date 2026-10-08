@@ -43,6 +43,7 @@ export interface Project {
   description?: string;
   status: string;
   ownerId?: number;
+  currentUserRole?: string;
   createdAt?: string;
   updatedAt?: string;
 }

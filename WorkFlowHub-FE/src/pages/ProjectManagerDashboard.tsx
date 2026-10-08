@@ -126,7 +126,10 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
   const loadProjects = async () => {
     setLoadingProjects(true);
     try {
-      const fetchedProjects = await ProjectService.getProjects();
+      const roleStr = (currentRole || user?.roleName || user?.role || '').toUpperCase();
+      const fetchedProjects = roleStr === 'ADMIN'
+        ? await ProjectService.getProjects()
+        : await ProjectService.getMyProjects();
       if (fetchedProjects && fetchedProjects.length > 0) {
         setProjects(fetchedProjects);
         const target = initialProjectId
