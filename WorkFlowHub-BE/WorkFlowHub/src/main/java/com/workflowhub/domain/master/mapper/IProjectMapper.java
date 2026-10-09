@@ -5,6 +5,7 @@ import com.workflowhub.domain.master.dto.request.UpdateProjectRequest;
 import com.workflowhub.domain.master.dto.response.ProjectResponse;
 import com.workflowhub.domain.master.entity.ProjectEntity;
 import com.workflowhub.domain.master.entity.UsersEntity;
+import org.apache.commons.lang3.ObjectUtils;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -26,7 +27,7 @@ public interface IProjectMapper {
     void updateEntityFromRequest(UpdateProjectRequest request, @MappingTarget ProjectEntity entity);
 
     default UsersEntity ownerRef(Long ownerId) {
-        if (ownerId == null) return null;
+        if (ObjectUtils.isEmpty(ownerId)) return null;
         UsersEntity ref = new UsersEntity();
         ref.setId(ownerId);
         return ref;
