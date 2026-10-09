@@ -106,6 +106,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/login",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/login-google",
+                    AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/**",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/register",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/refresh-token"
                 ).permitAll()

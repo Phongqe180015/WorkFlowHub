@@ -46,7 +46,22 @@ import com.workflowhub.domain.workflow.security.entity.RoleEntity;
 import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import org.springframework.beans.factory.annotation.Value;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -56,6 +71,12 @@ public class SecurityService implements ISecurityService {
 
     @Value("${google.client-id:}")
     private String googleClientId;
+
+    @Value("${google.client-secret:}")
+    private String googleClientSecret;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     private final IUsersRepository usersRepository;
     private final IRoleRepository roleRepository;
@@ -178,6 +199,119 @@ public class SecurityService implements ISecurityService {
         } catch (Exception e) {
             log.error("Failed to verify Google ID token", e);
             throw new UnauthorizedException("Google authentication failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String getGoogleAuthUrl(String redirectUri) {
+        String scope = URLEncoder.encode("email profile", StandardCharsets.UTF_8);
+        String encodedRedirect = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+
+        return "https://accounts.google.com/o/oauth2/v2/auth" +
+                "?client_id=" + googleClientId +
+                "&redirect_uri=" + encodedRedirect +
+                "&response_type=code" +
+                "&scope=" + scope +
+                "&access_type=offline" +
+                "&prompt=consent";
+    }
+
+    @Override
+    @Transactional
+    public void handleGoogleCallback(String code, String redirectUri, HttpServletResponse response) throws IOException {
+        try {
+            // 1. Exchange auth code for Google access token
+            RestTemplate restTemplate = new RestTemplate();
+            String tokenUrl = "https://oauth2.googleapis.com/token";
+
+            HttpHeaders tokenHeaders = new HttpHeaders();
+            tokenHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("code", code);
+            body.add("client_id", googleClientId);
+            body.add("client_secret", googleClientSecret);
+            body.add("redirect_uri", redirectUri);
+            body.add("grant_type", "authorization_code");
+
+            HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(body, tokenHeaders);
+            ResponseEntity<Map> tokenResponseEntity = restTemplate.postForEntity(tokenUrl, tokenRequest, Map.class);
+            Map<String, Object> tokenResponseBody = tokenResponseEntity.getBody();
+
+            if (tokenResponseBody == null || !tokenResponseBody.containsKey("access_token")) {
+                throw new UnauthorizedException("Failed to obtain access token from Google");
+            }
+
+            String googleAccessToken = (String) tokenResponseBody.get("access_token");
+
+            // 2. Get UserInfo from Google
+            String userInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
+            HttpHeaders userInfoHeaders = new HttpHeaders();
+            userInfoHeaders.setBearerAuth(googleAccessToken);
+            HttpEntity<Void> userInfoRequest = new HttpEntity<>(userInfoHeaders);
+
+            ResponseEntity<Map> userInfoResponseEntity = restTemplate.exchange(userInfoUrl, HttpMethod.GET, userInfoRequest, Map.class);
+            Map<String, Object> googleUserInfo = userInfoResponseEntity.getBody();
+
+            if (googleUserInfo == null || !googleUserInfo.containsKey("email")) {
+                throw new UnauthorizedException("Failed to obtain user info from Google");
+            }
+
+            String email = (String) googleUserInfo.get("email");
+            String name = (String) googleUserInfo.get("name");
+            String pictureUrl = (String) googleUserInfo.get("picture");
+
+            // 3. Find or Create user in WorkFlowHub DB
+            UsersEntity user = usersRepository.findByEmail(email).orElseGet(() -> {
+                RoleEntity defaultRole = roleRepository.getByName(USER)
+                        .orElseGet(() -> roleRepository.findById(2L).orElse(null));
+
+                UsersEntity newUser = new UsersEntity();
+                newUser.setEmail(email);
+                newUser.setName(name != null && !name.isBlank() ? name : email.split("@")[0]);
+                newUser.setAvatar(pictureUrl);
+                newUser.setStatus("active");
+                newUser.setRole(defaultRole);
+                newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+                return usersRepository.save(newUser);
+            });
+
+            if ("inactive".equalsIgnoreCase(user.getStatus()) || "suspended".equalsIgnoreCase(user.getStatus())) {
+                throw new ForbiddenException("Account is " + user.getStatus());
+            }
+
+            boolean updated = false;
+            if (ObjectUtils.isEmpty(user.getAvatar()) && ObjectUtils.isNotEmpty(pictureUrl)) {
+                user.setAvatar(pictureUrl);
+                updated = true;
+            }
+            if (ObjectUtils.isEmpty(user.getName()) && ObjectUtils.isNotEmpty(name)) {
+                user.setName(name);
+                updated = true;
+            }
+            if (updated) {
+                user = usersRepository.save(user);
+            }
+
+            // 4. Generate WorkFlowHub JWT Tokens
+            String accessToken = jwtTokenProvider.generateAccessToken(user);
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+            UserResponse userResponse = usersMapper.toResponse(user);
+
+            String userJson = new ObjectMapper().writeValueAsString(userResponse);
+            String encodedUser = URLEncoder.encode(userJson, StandardCharsets.UTF_8);
+
+            // 5. Redirect back to Frontend with tokens
+            String redirectUrl = frontendUrl + "/?token=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
+                    + "&refreshToken=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8)
+                    + "&user=" + encodedUser;
+
+            response.sendRedirect(redirectUrl);
+
+        } catch (Exception e) {
+            log.error("Google OAuth callback failed", e);
+            String errorRedirect = frontendUrl + "/?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            response.sendRedirect(errorRedirect);
         }
     }
 

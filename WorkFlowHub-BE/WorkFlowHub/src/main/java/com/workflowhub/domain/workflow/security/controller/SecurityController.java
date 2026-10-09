@@ -24,6 +24,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.view.RedirectView;
+
+import java.io.IOException;
+
 @RestController
 @RequestMapping(AppConstants.API_PREFIX + ApiConstants.AUTH)
 @RequiredArgsConstructor
@@ -42,10 +49,42 @@ public class SecurityController extends BaseController {
         return success(securityService.login(request), LOGIN_SUCCESSFUL);
     }
 
-    //Login with Google
+    // Login with Google (ID Token payload)
     @PostMapping("/login-google")
     public ApiResponse<AuthResponse> loginGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         return success(securityService.loginGoogle(request));
+    }
+
+    // Google OAuth Server-Redirect Login
+    @GetMapping("/google/login")
+    public RedirectView initiateGoogleLogin(HttpServletRequest request) {
+        String baseUrl = getBaseUrl(request);
+        String redirectUri = baseUrl + AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/callback";
+        String googleAuthUrl = securityService.getGoogleAuthUrl(redirectUri);
+        return new RedirectView(googleAuthUrl);
+    }
+
+    // Google OAuth Server-Redirect Callback
+    @GetMapping("/google/callback")
+    public void handleGoogleCallback(
+            @RequestParam("code") String code,
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+        String baseUrl = getBaseUrl(request);
+        String redirectUri = baseUrl + AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/callback";
+        securityService.handleGoogleCallback(code, redirectUri, response);
+    }
+
+    private String getBaseUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String serverName = request.getServerName();
+        int serverPort = request.getServerPort();
+        StringBuilder url = new StringBuilder();
+        url.append(scheme).append("://").append(serverName);
+        if (("http".equals(scheme) && serverPort != 80) || ("https".equals(scheme) && serverPort != 443)) {
+            url.append(":").append(serverPort);
+        }
+        return url.toString();
     }
 
     // logout

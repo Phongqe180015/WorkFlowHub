@@ -13,6 +13,10 @@ public interface ISecurityService {
 
     AuthResponse loginGoogle(GoogleLoginRequest request);
 
+    String getGoogleAuthUrl(String redirectUri);
+
+    void handleGoogleCallback(String code, String redirectUri, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException;
+
     void changePassword(ChangePasswordRequest request);
 
     void logout(HttpServletRequest request);
