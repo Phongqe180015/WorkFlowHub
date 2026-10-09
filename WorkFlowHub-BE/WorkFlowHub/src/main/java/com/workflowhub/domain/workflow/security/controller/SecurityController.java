@@ -8,6 +8,7 @@ import com.workflowhub.domain.master.dto.request.CreateUserRequest;
 import com.workflowhub.domain.master.dto.response.UserResponse;
 import com.workflowhub.domain.master.iservice.IUsersService;
 import com.workflowhub.domain.workflow.security.dto.request.ChangePasswordRequest;
+import com.workflowhub.domain.workflow.security.dto.request.GoogleLoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.LoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.RefreshTokenRequest;
 import com.workflowhub.domain.workflow.security.dto.request.RegisterRequest;
@@ -39,6 +40,12 @@ public class SecurityController extends BaseController {
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return success(securityService.login(request), LOGIN_SUCCESSFUL);
+    }
+
+    //Login with Google
+    @PostMapping("/login-google")
+    public ApiResponse<AuthResponse> loginGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return success(securityService.loginGoogle(request));
     }
 
     // logout

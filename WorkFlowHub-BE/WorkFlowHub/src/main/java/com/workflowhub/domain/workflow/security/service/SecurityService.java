@@ -10,6 +10,7 @@ import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.master.irepository.IUsersRepository;
 import com.workflowhub.domain.master.mapper.IUsersMapper;
 import com.workflowhub.domain.workflow.security.dto.request.ChangePasswordRequest;
+import com.workflowhub.domain.workflow.security.dto.request.GoogleLoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.LoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.RefreshTokenRequest;
 import com.workflowhub.domain.workflow.security.dto.response.AuthResponse;
@@ -35,12 +36,29 @@ import static com.workflowhub.common.constant.MessageConstants.PASSWORD_CONFIRMA
 import static com.workflowhub.common.constant.MessageConstants.USER;
 import static com.workflowhub.common.constant.MessageConstants.USER_NOT_FOUND_FOR_REFRESH_TOKEN;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.workflowhub.domain.workflow.security.entity.RoleEntity;
+import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Collections;
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SecurityService implements ISecurityService {
 
+    @Value("${google.client-id:}")
+    private String googleClientId;
+
     private final IUsersRepository usersRepository;
+    private final IRoleRepository roleRepository;
     private final IUsersMapper usersMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -79,6 +97,88 @@ public class SecurityService implements ISecurityService {
                 .expiresIn(jwtTokenProvider.getAccessTokenExpirationMs())
                 .user(userResponse)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginGoogle(GoogleLoginRequest request) {
+        GoogleIdToken.Payload payload = verifyGoogleIdToken(request.getIdToken());
+        String email = payload.getEmail();
+        Boolean emailVerified = payload.getEmailVerified();
+
+        if (Boolean.FALSE.equals(emailVerified)) {
+            throw new UnauthorizedException("Google email is not verified");
+        }
+
+        String name = (String) payload.get("name");
+        String pictureUrl = (String) payload.get("picture");
+
+        UsersEntity user = usersRepository.findByEmail(email).orElseGet(() -> {
+            RoleEntity defaultRole = roleRepository.getByName(USER)
+                    .orElseGet(() -> roleRepository.findById(2L).orElse(null));
+
+            UsersEntity newUser = new UsersEntity();
+            newUser.setEmail(email);
+            newUser.setName(name != null && !name.isBlank() ? name : email.split("@")[0]);
+            newUser.setAvatar(pictureUrl);
+            newUser.setStatus("active");
+            newUser.setRole(defaultRole);
+            newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            return usersRepository.save(newUser);
+        });
+
+        if ("inactive".equalsIgnoreCase(user.getStatus()) || "suspended".equalsIgnoreCase(user.getStatus())) {
+            throw new ForbiddenException("Account is " + user.getStatus());
+        }
+
+        boolean updated = false;
+        if (ObjectUtils.isEmpty(user.getAvatar()) && ObjectUtils.isNotEmpty(pictureUrl)) {
+            user.setAvatar(pictureUrl);
+            updated = true;
+        }
+        if (ObjectUtils.isEmpty(user.getName()) && ObjectUtils.isNotEmpty(name)) {
+            user.setName(name);
+            updated = true;
+        }
+        if (updated) {
+            user = usersRepository.save(user);
+        }
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+        UserResponse userResponse = usersMapper.toResponse(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType(SecurityConstants.BEARER_PREFIX.trim())
+                .expiresIn(jwtTokenProvider.getAccessTokenExpirationMs())
+                .user(userResponse)
+                .build();
+    }
+
+    private GoogleIdToken.Payload verifyGoogleIdToken(String idTokenString) {
+        try {
+            NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
+            JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+
+            GoogleIdTokenVerifier.Builder verifierBuilder = new GoogleIdTokenVerifier.Builder(transport, jsonFactory);
+            if (ObjectUtils.isNotEmpty(googleClientId)) {
+                verifierBuilder.setAudience(Collections.singletonList(googleClientId));
+            }
+
+            GoogleIdTokenVerifier verifier = verifierBuilder.build();
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+
+            if (idToken != null) {
+                return idToken.getPayload();
+            } else {
+                throw new UnauthorizedException("Invalid Google ID token");
+            }
+        } catch (Exception e) {
+            log.error("Failed to verify Google ID token", e);
+            throw new UnauthorizedException("Google authentication failed: " + e.getMessage());
+        }
     }
 
     @Override

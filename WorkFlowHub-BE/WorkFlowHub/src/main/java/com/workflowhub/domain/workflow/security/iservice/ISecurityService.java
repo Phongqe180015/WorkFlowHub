@@ -1,6 +1,7 @@
 package com.workflowhub.domain.workflow.security.iservice;
 
 import com.workflowhub.domain.workflow.security.dto.request.ChangePasswordRequest;
+import com.workflowhub.domain.workflow.security.dto.request.GoogleLoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.LoginRequest;
 import com.workflowhub.domain.workflow.security.dto.request.RefreshTokenRequest;
 import com.workflowhub.domain.workflow.security.dto.response.AuthResponse;
@@ -9,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface ISecurityService {
 
     AuthResponse login(LoginRequest request);
+
+    AuthResponse loginGoogle(GoogleLoginRequest request);
 
     void changePassword(ChangePasswordRequest request);
 
