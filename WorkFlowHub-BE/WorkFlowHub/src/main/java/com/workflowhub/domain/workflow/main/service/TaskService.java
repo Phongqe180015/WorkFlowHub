@@ -1,11 +1,17 @@
 package com.workflowhub.domain.workflow.main.service;
 
+import com.workflowhub.common.enums.RoleEnums;
+import com.workflowhub.common.exception.ForbiddenException;
 import com.workflowhub.common.exception.NotFoundException;
+import com.workflowhub.common.exception.UnauthorizedException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
+import com.workflowhub.common.util.SecurityUtils;
 import com.workflowhub.domain.workflow.main.dto.request.CreateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.request.UpdateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.response.TaskResponse;
 import com.workflowhub.domain.workflow.main.entity.TaskEntity;
+import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.main.irepository.IProjectMemberRepository;
 import com.workflowhub.domain.workflow.main.irepository.ITaskRepository;
 import com.workflowhub.domain.workflow.main.iservice.ITaskService;
 import com.workflowhub.domain.workflow.main.mapper.ITaskMapper;
@@ -14,6 +20,8 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +46,7 @@ public class TaskService implements ITaskService {
 
     private final ITaskRepository repository;
     private final ITaskMapper taskMapper;
+    private final IProjectMemberRepository projectMemberRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,9 +88,56 @@ public class TaskService implements ITaskService {
     public TaskResponse updateTask(Long id, UpdateTaskRequest request) {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
+
+        handleUpdateStatus(request, existing);
+
         taskMapper.updateEntityFromRequest(request, existing);
         TaskEntity saved = repository.save(existing);
         return taskMapper.toResponse(saved);
+    }
+
+    private void handleUpdateStatus(UpdateTaskRequest request, TaskEntity existing) {
+        if (ObjectUtils.isNotEmpty(request.getStatus()) && !request.getStatus().equalsIgnoreCase(existing.getStatus())) {
+            Long currentUserId = null;
+            try {
+                currentUserId = SecurityUtils.getCurrentUserId();
+            } catch (Exception ignored) {
+            }
+
+            Authentication auth = validateAuthen();
+
+            boolean isPM = handleValidateRole(existing, auth, currentUserId);
+
+            boolean isAssignee = existing.getAssignee() != null
+                    && existing.getAssignee().getId().equals(currentUserId);
+
+            if (!isPM && !isAssignee) {
+                throw new ForbiddenException("Only the Project Manager or the person assigned the task has the authority to change the task status.");
+            }
+        }
+    }
+
+    private boolean handleValidateRole(TaskEntity existing, Authentication auth, Long currentUserId) {
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+
+        Long projectId = existing.getProject().getId();
+        boolean isPM = isAdmin;
+        if (!isPM && ObjectUtils.isNotEmpty(currentUserId)) {
+            isPM = (existing.getProject().getOwner() != null && existing.getProject().getOwner().getId().equals(currentUserId))
+                    || projectMemberRepository.findById(new ProjectMemberId(projectId, currentUserId))
+                            .map(pm -> pm.getRole() != null && RoleEnums.PROJECT_MANAGER.matches(pm.getRole().getName()))
+                            .orElse(false);
+        }
+        return isPM;
+    }
+
+    private static Authentication validateAuthen() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (ObjectUtils.isEmpty(auth) || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            throw new UnauthorizedException("Please log in to perform this action.");
+        }
+        return auth;
     }
 
     @Override
