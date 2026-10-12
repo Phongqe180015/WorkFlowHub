@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.workflowhub.common.constant.CharacterConstants.SEMICOLON;
+import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_AUTHEN_TASK_STATUS;
+import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_UPDATE_TASK_STATUS;
 import static com.workflowhub.common.constant.MessageConstants.TASK;
 
 @Service
@@ -43,7 +45,6 @@ public class TaskService implements ITaskService {
                     .field("isDeleted",  "isDeleted",   Boolean.class)
                     .build();
     public static final String IS_DELETED_FALSE = "isDeleted==false";
-
     private final ITaskRepository repository;
     private final ITaskMapper taskMapper;
     private final IProjectMemberRepository projectMemberRepository;
@@ -112,7 +113,7 @@ public class TaskService implements ITaskService {
                     && existing.getAssignee().getId().equals(currentUserId);
 
             if (!isPM && !isAssignee) {
-                throw new ForbiddenException("Only the Project Manager or the person assigned the task has the authority to change the task status.");
+                throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
             }
         }
     }
@@ -135,7 +136,7 @@ public class TaskService implements ITaskService {
     private static Authentication validateAuthen() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (ObjectUtils.isEmpty(auth) || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
-            throw new UnauthorizedException("Please log in to perform this action.");
+            throw new UnauthorizedException(INVALID_AUTHEN_TASK_STATUS);
         }
         return auth;
     }
