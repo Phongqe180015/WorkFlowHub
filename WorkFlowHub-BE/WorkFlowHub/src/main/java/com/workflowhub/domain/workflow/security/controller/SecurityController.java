@@ -17,6 +17,7 @@ import com.workflowhub.domain.workflow.security.iservice.ISecurityService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.flywaydb.core.internal.util.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,10 +58,23 @@ public class SecurityController extends BaseController {
 
     // Google OAuth Server-Redirect Login
     @GetMapping("/google/login")
-    public RedirectView initiateGoogleLogin(HttpServletRequest request) {
+    public RedirectView initiateGoogleLogin(
+            @RequestParam(value = "client_url", required = false) String clientUrl,
+            HttpServletRequest request) {
         String baseUrl = getBaseUrl(request);
         String redirectUri = baseUrl + AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/callback";
-        String googleAuthUrl = securityService.getGoogleAuthUrl(redirectUri);
+
+        if (!StringUtils.hasText(clientUrl)) {
+            String referer = request.getHeader("Referer");
+            if (org.springframework.util.StringUtils.hasText(referer)) {
+                try {
+                    java.net.URI uri = new java.net.URI(referer);
+                    clientUrl = uri.getScheme() + "://" + uri.getAuthority();
+                } catch (Exception ignored) {}
+            }
+        }
+
+        String googleAuthUrl = securityService.getGoogleAuthUrl(redirectUri, clientUrl);
         return new RedirectView(googleAuthUrl);
     }
 
@@ -68,11 +82,12 @@ public class SecurityController extends BaseController {
     @GetMapping("/google/callback")
     public void handleGoogleCallback(
             @RequestParam("code") String code,
+            @RequestParam(value = "state", required = false) String state,
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         String baseUrl = getBaseUrl(request);
         String redirectUri = baseUrl + AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/callback";
-        securityService.handleGoogleCallback(code, redirectUri, response);
+        securityService.handleGoogleCallback(code, redirectUri, state, response);
     }
 
     private String getBaseUrl(HttpServletRequest request) {
