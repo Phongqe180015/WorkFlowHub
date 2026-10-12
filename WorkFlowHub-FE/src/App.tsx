@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth, type RoleType } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -11,12 +11,26 @@ import { DeveloperDashboard } from './pages/DeveloperDashboard';
 import { ViewerDashboard } from './pages/ViewerDashboard';
 
 const MainApp: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>('home');
+  const { currentRole, setCurrentRole, user, isAuthenticated } = useAuth();
+
+  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('token') || localStorage.getItem('workflowhub_token')) {
+      return 'dashboard';
+    }
+    return 'home';
+  });
+
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
-  const { currentRole, setCurrentRole, user, isAuthenticated } = useAuth();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('token') || isAuthenticated) {
+      setCurrentPage('dashboard');
+    }
+  }, [isAuthenticated]);
 
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);

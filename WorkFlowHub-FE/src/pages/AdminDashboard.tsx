@@ -96,8 +96,12 @@ export const AdminDashboard: React.FC = () => {
               {mockUsers.map((member) => (
                 <div key={member.id} className="py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
-                      {member.avatar}
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs overflow-hidden shrink-0">
+                      {member.avatar && (member.avatar.startsWith('http://') || member.avatar.startsWith('https://')) ? (
+                        <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{member.avatar || member.name.substring(0, 2).toUpperCase()}</span>
+                      )}
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-gray-900">{member.name}</div>

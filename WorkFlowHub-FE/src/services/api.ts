@@ -17,9 +17,26 @@ import type {
   ActivityLog
 } from '../types';
 
+export class ApiError extends Error {
+  public code?: string;
+  public status?: number;
+  constructor(message: string, code?: string, status?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
 const ERROR_CODE_TRANSLATIONS: Record<string, string> = {
   bad_request_data_missed_field: 'Vui lòng điền đầy đủ các thông tin bắt buộc.',
   bad_request_data_length_invalid: 'Độ dài ký tự nhập vào không hợp lệ hoặc vượt quá giới hạn.',
+  'Only the Project Manager or the person assigned the task has the authority to change the task status.':
+    'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+  'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.':
+    'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+  FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này.',
+  UNAUTHORIZED: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.',
 };
 
 const ENV_API_URL = import.meta.env.VITE_API_URL;
@@ -62,16 +79,20 @@ export class ApiClient {
 
     if (!response.ok) {
       let errorMessage = `Yêu cầu thất bại (${response.status})`;
+      let errorCode: string | undefined = undefined;
       try {
         const errorData = await response.json();
+        errorCode = errorData.code;
         const rawMsg = errorData.message || errorData.error;
         if (rawMsg) {
-          errorMessage = ERROR_CODE_TRANSLATIONS[rawMsg] || rawMsg;
+          errorMessage = ERROR_CODE_TRANSLATIONS[rawMsg] || (errorCode && ERROR_CODE_TRANSLATIONS[errorCode]) || rawMsg;
+        } else if (errorCode && ERROR_CODE_TRANSLATIONS[errorCode]) {
+          errorMessage = ERROR_CODE_TRANSLATIONS[errorCode];
         }
       } catch {
         // Body is not json
       }
-      throw new Error(errorMessage);
+      throw new ApiError(errorMessage, errorCode, response.status);
     }
 
     const contentType = response.headers.get('content-type');
@@ -119,6 +140,29 @@ export const AuthService = {
       localStorage.setItem('workflowhub_user', JSON.stringify(res.data.user));
     }
     return res;
+  },
+
+  /**
+   * POST /api/v1/auth/login-google
+   */
+  async loginGoogle(idToken: string): Promise<ApiResponse<AuthResponse>> {
+    const res = await ApiClient.post<ApiResponse<AuthResponse>>('/auth/login-google', { idToken });
+    if (res.data?.accessToken) {
+      ApiClient.setToken(res.data.accessToken);
+      if (res.data.refreshToken) {
+        localStorage.setItem('workflowhub_refresh_token', res.data.refreshToken);
+      }
+      localStorage.setItem('workflowhub_user', JSON.stringify(res.data.user));
+    }
+    return res;
+  },
+
+  /**
+   * GET /api/v1/auth/google/login URL for OAuth Server Redirect Flow
+   */
+  getGoogleLoginUrl(): string {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${BASE_URL}/auth/google/login${origin ? `?client_url=${encodeURIComponent(origin)}` : ''}`;
   },
 
   /**

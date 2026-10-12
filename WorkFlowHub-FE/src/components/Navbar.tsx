@@ -51,8 +51,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
                 onClick={() => onNavigate('dashboard')}
                 className="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-full transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
-                  {user.avatar || user.name?.substring(0, 2).toUpperCase() || 'U'}
+                <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold overflow-hidden shrink-0">
+                  {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{user.name?.substring(0, 2).toUpperCase() || 'U'}</span>
+                  )}
                 </div>
                 <span>{user.name}</span>
               </button>

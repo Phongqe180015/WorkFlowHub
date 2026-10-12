@@ -16,6 +16,7 @@ import { SubtaskList } from '../components/SubtaskList';
 import { TaskDetailModal } from '../components/TaskDetailModal';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { SubtaskFormModal } from '../components/SubtaskFormModal';
+import { ErrorModal } from '../components/ErrorModal';
 import { SubtaskService } from '../services/subtaskService';
 import { 
   FolderKanban, 
@@ -162,6 +163,26 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   // Notifications
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Pop-up Error Modal
+  const [errorModalState, setErrorModalState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    code?: string;
+  }>({
+    isOpen: false,
+    message: '',
+  });
+
+  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+    setErrorModalState({
+      isOpen: true,
+      title,
+      message,
+      code,
+    });
+  };
 
   const sidebarItems = [
     { id: 'sprints', label: 'Quản lý Sprint', icon: Layers },
@@ -310,20 +331,45 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     showNotification('success', `Đã giao việc "${newTask.title}" thành công!`);
   };
 
+  const canChangeTaskStatus = (task: Task) => {
+    if (isPM) return true;
+    if (!user) return false;
+    return Boolean(
+      task.assigneeId === user.id ||
+      (task.assigneeName && task.assigneeName.trim().toLowerCase() === user.name?.trim().toLowerCase())
+    );
+  };
+
   const handleUpdateTaskStatus = async (taskId: number, newStatus: string) => {
+    const targetTask = tasks.find((t) => t.id === taskId);
+    if (targetTask && !canChangeTaskStatus(targetTask)) {
+      showErrorModal(
+        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        'FORBIDDEN'
+      );
+      return;
+    }
     try {
       await TaskService.updateTask(taskId, { status: newStatus });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
       showNotification('success', 'Đã cập nhật trạng thái công việc!');
     } catch (err: any) {
       console.error('Lỗi khi cập nhật trạng thái task:', err);
+      // Đảm bảo UI giữ nguyên trạng thái cũ
+      setTasks((prev) => [...prev]);
+      showErrorModal(
+        err.message || 'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
+      );
       showNotification('error', err.message || 'Không thể cập nhật trạng thái.');
     }
   };
 
   const handleDeleteTask = async (taskId: number, taskTitle?: string) => {
     if (!isPM) {
-      alert('Chỉ có Project Manager (PM) mới có quyền xóa công việc.');
+      showErrorModal('Chỉ có Project Manager (PM) mới có quyền xóa công việc.', 'Từ chối quyền truy cập', 'FORBIDDEN');
       return;
     }
     if (!window.confirm(`Bạn có chắc muốn chuyển công việc "${taskTitle || 'này'}" vào thùng rác không?`)) {
@@ -341,6 +387,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       showNotification('success', 'Đã chuyển công việc vào thùng rác (xóa mềm)!');
     } catch (err: any) {
       console.error('Lỗi khi xóa công việc:', err);
+      showErrorModal(err.message || 'Không thể xóa công việc.', 'Lỗi thao tác', err.code);
       showNotification('error', err.message || 'Không thể xóa công việc.');
     }
   };
@@ -610,13 +657,13 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Top Notification Toast */}
+      {/* Floating Notification Toast */}
       {notification && (
         <div
-          className={`mb-6 p-4 rounded-2xl flex items-center gap-3 text-xs shadow-xs animate-in fade-in ${
+          className={`fixed top-6 right-6 z-[90] max-w-md p-4 rounded-2xl flex items-center gap-3 text-xs shadow-2xl border backdrop-blur-md animate-in slide-in-from-top-4 duration-300 ${
             notification.type === 'success'
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
+              ? 'bg-emerald-50/95 border-emerald-300 text-emerald-800'
+              : 'bg-red-50/95 border-red-300 text-red-800'
           }`}
         >
           {notification.type === 'success' ? (
@@ -1037,8 +1084,12 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                   {/* Trạng thái công việc */}
                                   <select
                                     value={task.status}
+                                    disabled={!canChangeTaskStatus(task)}
+                                    title={!canChangeTaskStatus(task) ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
                                     onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value)}
-                                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border cursor-pointer focus:outline-none ${
+                                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:outline-none ${
+                                      !canChangeTaskStatus(task) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                                    } ${
                                       isDone
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                         : isInProgress
@@ -1915,8 +1966,12 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             {/* Trạng thái công việc */}
                             <select
                               value={task.status}
+                              disabled={!canChangeTaskStatus(task)}
+                              title={!canChangeTaskStatus(task) ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
                               onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value)}
-                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border cursor-pointer focus:outline-none ${
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:outline-none ${
+                                !canChangeTaskStatus(task) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                              } ${
                                 isDone
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : isInProgress
@@ -2232,6 +2287,15 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
           }}
         />
       )}
+
+      {/* Modal Thông Báo Lỗi / Từ Chối Quyền */}
+      <ErrorModal
+        isOpen={errorModalState.isOpen}
+        onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}
+        title={errorModalState.title}
+        message={errorModalState.message}
+        code={errorModalState.code}
+      />
     </div>
   );
 };

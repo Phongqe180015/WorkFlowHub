@@ -55,6 +55,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const triggerGooglePrompt = () => {
+    window.location.href = AuthService.getGoogleLoginUrl();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl relative border border-gray-100">
@@ -157,19 +161,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         <button
-          onClick={() => {
-            login('google-sso-token', {
-              id: 99,
-              name: 'Google User',
-              email: 'user@workflowhub.vn',
-              roleName: 'User',
-              role: 'USER',
-              status: 'active',
-              avatar: 'GG',
-            });
-            onSuccess();
-            onClose();
-          }}
+          type="button"
+          onClick={triggerGooglePrompt}
           className="w-full py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
