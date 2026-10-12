@@ -87,8 +87,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
         <div className="flex items-center gap-3 sm:gap-4">
           {user && (
             <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-700">
-              <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[11px]">
-                {user.avatar || user.name?.substring(0, 2).toUpperCase() || 'U'}
+              <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[11px] overflow-hidden shrink-0">
+                {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{user.name?.substring(0, 2).toUpperCase() || 'U'}</span>
+                )}
               </div>
               <span className="max-w-[120px] truncate">{user.name}</span>
             </div>

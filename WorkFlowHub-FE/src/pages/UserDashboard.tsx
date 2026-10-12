@@ -27,6 +27,7 @@ import { SubtaskList } from '../components/SubtaskList';
 import { TaskDetailModal } from '../components/TaskDetailModal';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { SubtaskFormModal } from '../components/SubtaskFormModal';
+import { ErrorModal } from '../components/ErrorModal';
 import { ProjectService, TaskService, ActivityLogService, ProjectMemberService } from '../services/api';
 import { SubtaskService } from '../services/subtaskService';
 import type { Project, Task, ActivityLog, Subtask, ProjectMember } from '../types';
@@ -36,12 +37,32 @@ interface UserDashboardProps {
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManager }) => {
-  const { user } = useAuth();
+  const { user, currentRole } = useAuth();
   const [activeTab, setActiveTab] = useState<'myTasks' | 'myProjects' | 'activities'>('myTasks');
   const [taskFilter, setTaskFilter] = useState<'ALL' | 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'CLOSED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [createdProjectNotification, setCreatedProjectNotification] = useState<string | null>(null);
+
+  // Pop-up Error Modal
+  const [errorModalState, setErrorModalState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    code?: string;
+  }>({
+    isOpen: false,
+    message: '',
+  });
+
+  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+    setErrorModalState({
+      isOpen: true,
+      title,
+      message,
+      code,
+    });
+  };
 
   // Danh sách công việc cá nhân (100% dữ liệu thực từ Backend API)
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -289,9 +310,34 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     return 'TO_DO';
   };
 
+  const isPM = Boolean(
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
+    currentRole === 'PROJECT_MANAGER' ||
+    currentRole === 'ADMIN'
+  );
+
+  const canChangeTaskStatus = (task: Task) => {
+    if (isPM) return true;
+    if (!user) return false;
+    return Boolean(
+      task.assigneeId === user.id ||
+      (task.assigneeName && task.assigneeName.trim().toLowerCase() === user.name?.trim().toLowerCase())
+    );
+  };
+
   const handleToggleTask = async (taskId: number) => {
     const currentTask = tasks.find((t) => t.id === taskId);
     if (!currentTask) return;
+
+    if (!canChangeTaskStatus(currentTask)) {
+      showErrorModal(
+        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        'FORBIDDEN'
+      );
+      return;
+    }
 
     const isDone = normalizeStatus(currentTask.status) === 'DONE';
     const nextStatus = isDone ? 'IN_PROGRESS' : 'DONE';
@@ -313,12 +359,36 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     // Đồng bộ lên backend API
     try {
       await TaskService.updateTask(taskId, { status: nextStatus });
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Lỗi khi cập nhật trạng thái task lên máy chủ:', err);
+      // Revert lại trạng thái cũ
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: currentTask.status, progress: currentTask.progress } : t))
+      );
+      showErrorModal(
+        err.message || 'Không thể cập nhật trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
+      );
     }
   };
 
   const handleStatusChange = async (taskId: number, newStatus: string) => {
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
+    if (!canChangeTaskStatus(currentTask)) {
+      showErrorModal(
+        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        'FORBIDDEN'
+      );
+      return;
+    }
+
+    const previousStatus = currentTask.status;
+    const previousProgress = currentTask.progress;
+
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
@@ -332,8 +402,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     );
     try {
       await TaskService.updateTask(taskId, { status: newStatus });
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Lỗi khi cập nhật trạng thái:', err);
+      // Revert lại trạng thái cũ
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus, progress: previousProgress } : t))
+      );
+      showErrorModal(
+        err.message || 'Không thể cập nhật trạng thái công việc.',
+        'Từ chối quyền truy cập',
+        err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
+      );
     }
   };
 
@@ -519,8 +598,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               Tài khoản của bạn
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
-                {user?.avatar || user?.name?.substring(0, 2).toUpperCase() || 'U'}
+              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                  <img src={user.avatar} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{user?.name?.substring(0, 2).toUpperCase() || 'U'}</span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-bold text-gray-900 truncate">{user?.name}</div>
@@ -628,6 +711,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     const isDone = statusNorm === 'DONE';
                     const isInProgress = statusNorm === 'IN_PROGRESS';
                     const isExpanded = expandedTaskId === task.id;
+                    const canChange = canChangeTaskStatus(task);
 
                     return (
                       <div
@@ -638,8 +722,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                           <div className="flex items-center gap-3 min-w-0">
                             <button
                               type="button"
+                              disabled={!canChange}
                               onClick={() => handleToggleTask(task.id)}
-                              className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                              title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                              className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                                !canChange ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                              } ${
                                 isDone
                                   ? 'bg-emerald-600 border-emerald-600 text-white'
                                   : 'border-gray-300 hover:border-emerald-500 bg-white'
@@ -709,8 +797,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
 
                             <select
                               value={statusNorm}
+                              disabled={!canChange}
+                              title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
                               onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer ${
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none ${
+                                !canChange ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                              } ${
                                 isDone
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : isInProgress
@@ -736,7 +828,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                               <Eye size={15} />
                             </button>
 
-                            {/* Nút Chỉnh sửa Task */}
+                            {/* Nút Sửa Task */}
                             <button
                               type="button"
                               onClick={() => handleOpenEditTask(task)}
@@ -767,6 +859,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                           <div className="pl-8 pt-1 animate-in fade-in">
                             <SubtaskList
                               taskId={task.id}
+                              parentTaskAssigneeId={task.assigneeId}
                               members={task.projectId ? projectMembers[task.projectId] || [] : []}
                               onSelectSubtask={(st) => handleOpenSubtaskDetail(st, task)}
                               compact
@@ -1008,6 +1101,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
           }}
         />
       )}
+
+      {/* Modal Thông Báo Lỗi / Từ Chối Quyền */}
+      <ErrorModal
+        isOpen={errorModalState.isOpen}
+        onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}
+        title={errorModalState.title}
+        message={errorModalState.message}
+        code={errorModalState.code}
+      />
     </div>
   );
 };

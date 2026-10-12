@@ -53,6 +53,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token');
+    const refreshTokenParam = params.get('refreshToken');
+    const userParam = params.get('user');
+
+    if (tokenParam && userParam) {
+      try {
+        const parsedUser = JSON.parse(decodeURIComponent(userParam));
+        if (refreshTokenParam) {
+          localStorage.setItem('workflowhub_refresh_token', refreshTokenParam);
+        }
+        login(tokenParam, parsedUser);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (err) {
+        console.error('Failed to parse OAuth redirect params:', err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('workflowhub_role', currentRole);
   }, [currentRole]);
 

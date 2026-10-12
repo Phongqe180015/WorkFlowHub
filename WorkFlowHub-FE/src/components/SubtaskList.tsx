@@ -3,9 +3,13 @@ import { SubtaskService } from '../services/subtaskService';
 import type { Subtask, ProjectMember } from '../types';
 import { Check, Plus, Trash2, ListChecks, Loader2, Edit3, Eye, Clock, User, Sparkles } from 'lucide-react';
 import { SubtaskFormModal } from './SubtaskFormModal';
+import { ErrorModal } from './ErrorModal';
+import { useAuth } from '../context/AuthContext';
 
 interface SubtaskListProps {
   taskId: number;
+  parentTaskAssigneeId?: number | null;
+  canToggle?: boolean;
   members?: ProjectMember[];
   onSubtasksChange?: (subtasks: Subtask[]) => void;
   onSelectSubtask?: (subtask: Subtask) => void;
@@ -14,18 +18,58 @@ interface SubtaskListProps {
 
 export const SubtaskList: React.FC<SubtaskListProps> = ({
   taskId,
+  parentTaskAssigneeId,
+  canToggle,
   members = [],
   onSubtasksChange,
   onSelectSubtask,
   compact = false,
 }) => {
+  const { user, currentRole } = useAuth();
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Pop-up Error Modal
+  const [errorModalState, setErrorModalState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    code?: string;
+  }>({
+    isOpen: false,
+    message: '',
+  });
+
+  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+    setErrorModalState({
+      isOpen: true,
+      title,
+      message,
+      code,
+    });
+  };
+
   // Modal create/edit subtask state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
+
+  const isPM = Boolean(
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
+    currentRole === 'PROJECT_MANAGER' ||
+    currentRole === 'ADMIN'
+  );
+
+  const canToggleSubtask = (st: Subtask) => {
+    if (canToggle !== undefined && !canToggle) return false;
+    if (isPM) return true;
+    if (!user) return false;
+    if (parentTaskAssigneeId && parentTaskAssigneeId === user.id) return true;
+    if (st.assigneeId && st.assigneeId === user.id) return true;
+    if (st.assigneeName && user.name && st.assigneeName.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
+    return false;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -61,13 +105,34 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   };
 
   const handleToggle = async (subtaskId: number | string) => {
+    const target = subtasks.find((s) => s.id === subtaskId);
+    if (target && !canToggleSubtask(target)) {
+      showErrorModal(
+        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái việc phụ.',
+        'Từ chối quyền truy cập',
+        'FORBIDDEN'
+      );
+      return;
+    }
+
+    const previousSubtasks = [...subtasks];
     setSubtasks((prev) =>
       prev.map((s) => (s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s))
     );
-    const updated = await SubtaskService.toggleSubtask(taskId, subtaskId);
-    setSubtasks(updated);
-    if (onSubtasksChange) {
-      onSubtasksChange(updated);
+    try {
+      const updated = await SubtaskService.toggleSubtask(taskId, subtaskId);
+      setSubtasks(updated);
+      if (onSubtasksChange) {
+        onSubtasksChange(updated);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi đổi trạng thái subtask:', err);
+      setSubtasks(previousSubtasks);
+      showErrorModal(
+        err.message || 'Không thể thay đổi trạng thái việc phụ.',
+        'Từ chối quyền truy cập',
+        err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
+      );
     }
   };
 
@@ -153,7 +218,9 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
             Chưa có công việc phụ nào. Thêm nhanh bên dưới hoặc bấm &quot;+ Tạo chi tiết&quot;:
           </div>
         ) : (
-          subtasks.map((st) => (
+          subtasks.map((st) => {
+            const canChange = canToggleSubtask(st);
+            return (
             <div
               key={st.id}
               className="flex items-center justify-between gap-2.5 py-2 px-2.5 rounded-xl hover:bg-white bg-white/40 border border-gray-100/60 transition-all group shadow-2xs"
@@ -161,8 +228,12 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <button
                   type="button"
+                  disabled={!canChange}
                   onClick={() => handleToggle(st.id)}
-                  className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                  className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 ${
+                    !canChange ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
                     st.isCompleted
                       ? 'bg-emerald-600 border-emerald-600 text-white'
                       : 'border-gray-300 hover:border-emerald-500 bg-white'
@@ -241,7 +312,8 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -267,6 +339,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
       {/* Subtask Form Modal (Create / Edit with rich fields: title, description, assignee, est, priority, deadline) */}
       <SubtaskFormModal
         taskId={taskId}
+        parentTaskAssigneeId={parentTaskAssigneeId}
         subtask={editingSubtask}
         members={members}
         isOpen={isFormModalOpen}
@@ -275,6 +348,15 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           setEditingSubtask(null);
         }}
         onSuccess={handleFormModalSuccess}
+      />
+
+      {/* Pop-up Error Modal */}
+      <ErrorModal
+        isOpen={errorModalState.isOpen}
+        onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}
+        title={errorModalState.title}
+        message={errorModalState.message}
+        code={errorModalState.code}
       />
     </div>
   );

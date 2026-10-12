@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { SubtaskService } from '../services/subtaskService';
 import type { Subtask, ProjectMember } from '../types';
 import { X, Calendar, Loader2, AlertCircle, ListChecks, User, Clock, Flag, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface SubtaskFormModalProps {
   taskId: number;
+  parentTaskAssigneeId?: number | null;
   subtask?: Subtask | null; // If provided, modal is in EDIT mode; if null/undefined, CREATE mode
   members?: ProjectMember[];
   isOpen: boolean;
@@ -14,13 +16,32 @@ interface SubtaskFormModalProps {
 
 export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
   taskId,
+  parentTaskAssigneeId,
   subtask,
   members = [],
   isOpen,
   onClose,
   onSuccess,
 }) => {
+  const { user, currentRole } = useAuth();
   const isEdit = Boolean(subtask);
+
+  const isPM = Boolean(
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
+    currentRole === 'PROJECT_MANAGER' ||
+    currentRole === 'ADMIN'
+  );
+
+  const isAssignee = Boolean(
+    user && (
+      (parentTaskAssigneeId && parentTaskAssigneeId === user.id) ||
+      (subtask && subtask.assigneeId === user.id) ||
+      (subtask?.assigneeName && user.name && subtask.assigneeName.trim().toLowerCase() === user.name.trim().toLowerCase())
+    )
+  );
+
+  const canChangeStatus = isPM || isAssignee;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -249,19 +270,26 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
           {/* Trạng thái hoàn thành (khi Edit) */}
           {isEdit && (
             <div className="pt-2">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700">
+              <label className={`flex items-center gap-2 text-xs font-medium text-gray-700 ${
+                !canChangeStatus ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              }`}>
                 <input
                   type="checkbox"
                   checked={isCompleted}
                   onChange={(e) => setIsCompleted(e.target.checked)}
                   className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
-                  disabled={loading}
+                  disabled={loading || !canChangeStatus}
                 />
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 size={14} className={isCompleted ? 'text-emerald-600' : 'text-gray-400'} />
                   <span>Đã hoàn thành việc phụ này</span>
                 </span>
               </label>
+              {!canChangeStatus && (
+                <span className="text-[10px] text-amber-600 block mt-1">
+                  Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái
+                </span>
+              )}
             </div>
           )}
 

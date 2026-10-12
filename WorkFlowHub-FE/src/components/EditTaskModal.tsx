@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TaskService } from '../services/api';
 import type { Task, ProjectMember, Sprint, UpdateTaskPayload } from '../types';
 import { X, Calendar, Loader2, AlertCircle, Edit3, User, Layers, Flag, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface EditTaskModalProps {
   task: Task | null;
@@ -20,6 +21,24 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { user, currentRole } = useAuth();
+
+  const isPM = Boolean(
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
+    currentRole === 'PROJECT_MANAGER' ||
+    currentRole === 'ADMIN'
+  );
+
+  const isAssignee = Boolean(
+    user && task && (
+      task.assigneeId === user.id ||
+      (task.assigneeName && task.assigneeName.trim().toLowerCase() === user.name?.trim().toLowerCase())
+    )
+  );
+
+  const canChangeStatus = isPM || isAssignee;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
@@ -237,15 +256,23 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               </label>
               <select
                 value={status}
+                disabled={loading || !canChangeStatus}
+                title={!canChangeStatus ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
-                disabled={loading}
+                className={`w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 ${
+                  !canChangeStatus ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 <option value="TO_DO">Cần làm (To Do)</option>
                 <option value="IN_PROGRESS">Đang làm (In Progress)</option>
                 <option value="DONE">Hoàn thành (Done)</option>
                 <option value="CLOSED">Đã đóng (Closed)</option>
               </select>
+              {!canChangeStatus && (
+                <span className="text-[10px] text-amber-600 block mt-1">
+                  Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái
+                </span>
+              )}
             </div>
           </div>
 

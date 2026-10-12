@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, Subtask, ProjectMember, Sprint } from '../types';
 import { SubtaskService } from '../services/subtaskService';
+import { useAuth } from '../context/AuthContext';
+import { ErrorModal } from './ErrorModal';
 import { 
   X, 
   Calendar, 
@@ -51,9 +53,54 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onBackToParentTask,
   onCreateSubtaskForTask,
 }) => {
+  const { user, currentRole } = useAuth();
   const isSubtaskMode = Boolean(subtask);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+
+  // Pop-up Error Modal
+  const [errorModalState, setErrorModalState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    code?: string;
+  }>({
+    isOpen: false,
+    message: '',
+  });
+
+  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+    setErrorModalState({
+      isOpen: true,
+      title,
+      message,
+      code,
+    });
+  };
+
+  const isPM = Boolean(
+    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
+    currentRole === 'PROJECT_MANAGER' ||
+    currentRole === 'ADMIN'
+  );
+
+  const canToggleSubtask = (st: Subtask) => {
+    if (isPM) return true;
+    if (!user) return false;
+    const isTaskAssignee = Boolean(
+      task && (
+        task.assigneeId === user.id ||
+        (task.assigneeName && task.assigneeName.trim().toLowerCase() === user.name?.trim().toLowerCase())
+      )
+    );
+    if (isTaskAssignee) return true;
+    const isSubtaskAssignee = Boolean(
+      st.assigneeId === user.id ||
+      (st.assigneeName && user.name && st.assigneeName.trim().toLowerCase() === user.name.trim().toLowerCase())
+    );
+    return isSubtaskAssignee;
+  };
 
   // Load subtasks if viewing main task
   useEffect(() => {
@@ -74,8 +121,31 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleToggleSubtaskItem = async (stId: number | string) => {
     if (!task) return;
-    const updated = await SubtaskService.toggleSubtask(task.id, stId);
-    setSubtasks(updated);
+    const targetSt = subtasks.find((s) => s.id === stId);
+    if (targetSt && !canToggleSubtask(targetSt)) {
+      showErrorModal(
+        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái việc phụ.',
+        'Từ chối quyền truy cập',
+        'FORBIDDEN'
+      );
+      return;
+    }
+    const previousSubtasks = [...subtasks];
+    setSubtasks((prev) =>
+      prev.map((s) => (s.id === stId ? { ...s, isCompleted: !s.isCompleted } : s))
+    );
+    try {
+      const updated = await SubtaskService.toggleSubtask(task.id, stId);
+      setSubtasks(updated);
+    } catch (err: any) {
+      console.error('Lỗi khi đổi trạng thái subtask:', err);
+      setSubtasks(previousSubtasks);
+      showErrorModal(
+        err.message || 'Không thể thay đổi trạng thái việc phụ.',
+        'Từ chối quyền truy cập',
+        err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
+      );
+    }
   };
 
   if (!isOpen || (!task && !subtask)) return null;
@@ -430,7 +500,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {subtasks.map((st) => (
+                  {subtasks.map((st) => {
+                    const canToggle = canToggleSubtask(st);
+                    return (
                     <div
                       key={st.id}
                       className="p-3 bg-gray-50/70 hover:bg-emerald-50/40 rounded-2xl border border-gray-100 transition-all flex items-center justify-between gap-3 group"
@@ -438,8 +510,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <button
                           type="button"
+                          disabled={!canToggle}
                           onClick={() => handleToggleSubtaskItem(st.id)}
-                          className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                          title={!canToggle ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                          className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                            !canToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          } ${
                             st.isCompleted
                               ? 'bg-emerald-600 border-emerald-600 text-white'
                               : 'border-gray-300 hover:border-emerald-500 bg-white'
@@ -491,7 +567,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -512,6 +589,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Pop-up Error Modal */}
+      <ErrorModal
+        isOpen={errorModalState.isOpen}
+        onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}
+        title={errorModalState.title}
+        message={errorModalState.message}
+        code={errorModalState.code}
+      />
     </div>
   );
 };
