@@ -28,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_AUTHEN_TASK_STATUS;
+import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_UPDATE_TASK_STATUS;
+
 @Service
 @RequiredArgsConstructor
 public class SubtaskService implements ISubtaskService {
@@ -117,7 +120,7 @@ public class SubtaskService implements ISubtaskService {
                     && entity.getAssignee().getId().equals(currentUserId);
 
             if (!isPM && !isTaskAssignee && !isSubtaskAssignee) {
-                throw new ForbiddenException("Only the Project Manager or the person assigned the task has the authority to change the task status");
+                throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
             }
         }
     }
@@ -136,7 +139,7 @@ public class SubtaskService implements ISubtaskService {
     private static Authentication getAuthentication() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (ObjectUtils.isEmpty(auth) || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
-            throw new UnauthorizedException("Please log in to perform this action.");
+            throw new UnauthorizedException(INVALID_AUTHEN_TASK_STATUS);
         }
         return auth;
     }
