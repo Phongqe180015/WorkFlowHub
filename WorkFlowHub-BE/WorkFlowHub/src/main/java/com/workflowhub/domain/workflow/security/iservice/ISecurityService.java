@@ -13,9 +13,9 @@ public interface ISecurityService {
 
     AuthResponse loginGoogle(GoogleLoginRequest request);
 
-    String getGoogleAuthUrl(String redirectUri);
+    String getGoogleAuthUrl(String redirectUri, String clientFrontendUrl);
 
-    void handleGoogleCallback(String code, String redirectUri, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException;
+    void handleGoogleCallback(String code, String redirectUri, String state, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException;
 
     void changePassword(ChangePasswordRequest request);
 

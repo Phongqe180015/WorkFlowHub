@@ -84,6 +84,7 @@ public class SecurityService implements ISecurityService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -153,11 +154,11 @@ public class SecurityService implements ISecurityService {
         }
 
         boolean updated = false;
-        if (ObjectUtils.isEmpty(user.getAvatar()) && ObjectUtils.isNotEmpty(pictureUrl)) {
+        if (ObjectUtils.isNotEmpty(pictureUrl) && !pictureUrl.equals(user.getAvatar())) {
             user.setAvatar(pictureUrl);
             updated = true;
         }
-        if (ObjectUtils.isEmpty(user.getName()) && ObjectUtils.isNotEmpty(name)) {
+        if (ObjectUtils.isNotEmpty(name) && !name.equals(user.getName())) {
             user.setName(name);
             updated = true;
         }
@@ -203,9 +204,11 @@ public class SecurityService implements ISecurityService {
     }
 
     @Override
-    public String getGoogleAuthUrl(String redirectUri) {
+    public String getGoogleAuthUrl(String redirectUri, String clientFrontendUrl) {
         String scope = URLEncoder.encode("email profile", StandardCharsets.UTF_8);
         String encodedRedirect = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+        String targetUrl = ObjectUtils.isNotEmpty(clientFrontendUrl) ? clientFrontendUrl : frontendUrl;
+        String encodedState = URLEncoder.encode(targetUrl, StandardCharsets.UTF_8);
 
         return "https://accounts.google.com/o/oauth2/v2/auth" +
                 "?client_id=" + googleClientId +
@@ -213,12 +216,25 @@ public class SecurityService implements ISecurityService {
                 "&response_type=code" +
                 "&scope=" + scope +
                 "&access_type=offline" +
-                "&prompt=consent";
+                "&prompt=consent" +
+                "&state=" + encodedState;
     }
 
     @Override
     @Transactional
-    public void handleGoogleCallback(String code, String redirectUri, HttpServletResponse response) throws IOException {
+    public void handleGoogleCallback(String code, String redirectUri, String state, HttpServletResponse response) throws IOException {
+        String targetFrontendUrl = frontendUrl;
+        if (ObjectUtils.isNotEmpty(state)) {
+            try {
+                String decodedState = java.net.URLDecoder.decode(state, StandardCharsets.UTF_8);
+                if (decodedState.startsWith("http://") || decodedState.startsWith("https://")) {
+                    targetFrontendUrl = decodedState.replaceAll("/$", "");
+                }
+            } catch (Exception e) {
+                log.warn("Could not decode state URL: {}", state);
+            }
+        }
+
         try {
             // 1. Exchange auth code for Google access token
             RestTemplate restTemplate = new RestTemplate();
@@ -280,13 +296,14 @@ public class SecurityService implements ISecurityService {
                 throw new ForbiddenException("Account is " + user.getStatus());
             }
 
+            // Always update/sync name & avatar from Google if provided
             boolean updated = false;
-            if (ObjectUtils.isEmpty(user.getAvatar()) && ObjectUtils.isNotEmpty(pictureUrl)) {
-                user.setAvatar(pictureUrl);
+            if (ObjectUtils.isNotEmpty(name) && !name.equals(user.getName())) {
+                user.setName(name);
                 updated = true;
             }
-            if (ObjectUtils.isEmpty(user.getName()) && ObjectUtils.isNotEmpty(name)) {
-                user.setName(name);
+            if (ObjectUtils.isNotEmpty(pictureUrl) && !pictureUrl.equals(user.getAvatar())) {
+                user.setAvatar(pictureUrl);
                 updated = true;
             }
             if (updated) {
@@ -298,11 +315,15 @@ public class SecurityService implements ISecurityService {
             String refreshToken = jwtTokenProvider.generateRefreshToken(user);
             UserResponse userResponse = usersMapper.toResponse(user);
 
-            String userJson = new ObjectMapper().writeValueAsString(userResponse);
+            ObjectMapper mapper = objectMapper.copy();
+            mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+            String userJson = mapper.writeValueAsString(userResponse);
             String encodedUser = URLEncoder.encode(userJson, StandardCharsets.UTF_8);
 
-            // 5. Redirect back to Frontend with tokens
-            String redirectUrl = frontendUrl + "/?token=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
+            // 5. Redirect back to target Frontend URL with tokens
+            String redirectUrl = targetFrontendUrl + "/?token=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
                     + "&refreshToken=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8)
                     + "&user=" + encodedUser;
 
@@ -310,7 +331,7 @@ public class SecurityService implements ISecurityService {
 
         } catch (Exception e) {
             log.error("Google OAuth callback failed", e);
-            String errorRedirect = frontendUrl + "/?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            String errorRedirect = targetFrontendUrl + "/?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
             response.sendRedirect(errorRedirect);
         }
     }
