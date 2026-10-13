@@ -35,7 +35,7 @@ public class JwtTokenProvider {
     private String secretKey;
 
     @Getter
-    @Value("${security.jwt.access-token-expiration:86400000}")
+    @Value("${security.jwt.access-token-expiration:1800000}")
     private long accessTokenExpirationMs;
 
     @Getter

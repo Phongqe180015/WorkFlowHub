@@ -23,8 +23,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
-  const { login } = useAuth();
+  const { login, sessionExpiredMessage, clearSessionExpiredMessage } = useAuth();
 
   if (!isOpen) return null;
 
@@ -36,9 +37,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (mode === 'login') {
-        const response = await AuthService.login({ email, password });
+        const response = await AuthService.login({ email, password }, rememberMe);
         if (response && response.data) {
-          login(response.data.accessToken, response.data.user);
+          login(response.data.accessToken, response.data.user, rememberMe);
+          clearSessionExpiredMessage();
           onSuccess();
           onClose();
         }
@@ -82,6 +84,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               : 'Trải nghiệm quản lý sprint tinh gọn chỉ trong 2 phút'}
           </p>
         </div>
+
+        {sessionExpiredMessage && (
+          <div className="mb-4 p-3 text-xs rounded-xl bg-amber-50 text-amber-800 border border-amber-200 flex items-start gap-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-600" />
+            <span>{sessionExpiredMessage}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 text-xs rounded-xl bg-red-50 text-red-700 border border-red-200 flex items-start gap-2">
@@ -144,6 +153,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               />
             </div>
           </div>
+
+          {mode === 'login' && (
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer text-gray-600 select-none hover:text-gray-900">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer w-3.5 h-3.5"
+                />
+                <span>Ghi nhớ đăng nhập</span>
+              </label>
+              <span className="text-[11px] text-gray-400" title="Nếu không chọn, phiên sẽ tự hủy khi tắt trình duyệt hoặc tắt máy">
+                (Tắt máy tự đăng xuất)
+              </span>
+            </div>
+          )}
 
           <button
             type="submit"

@@ -63,9 +63,14 @@ spring:
     time-zone: UTC
 
   # ============================================================
-  # SECURITY (placeholder — expand in auth module)
+  # SECURITY
   # ============================================================
   security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY:workflowhub-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-security!}
+      # Access token: 30 minutes (1,800,000 ms), Refresh token: 7 days (604,800,000 ms)
+      access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:1800000}
+      refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
     oauth2:
       resourceserver:
         jwt:

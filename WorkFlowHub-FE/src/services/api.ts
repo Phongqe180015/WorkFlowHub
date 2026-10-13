@@ -42,20 +42,19 @@ const ERROR_CODE_TRANSLATIONS: Record<string, string> = {
 const ENV_API_URL = import.meta.env.VITE_API_URL;
 const BASE_URL = ENV_API_URL ? `${ENV_API_URL.replace(/\/$/, '')}/api/v1` : '/api/v1';
 
+import { TokenStorage } from '../utils/tokenStorage';
+
 export class ApiClient {
   public static getToken(): string | null {
-    return localStorage.getItem('workflowhub_token');
+    return TokenStorage.getToken();
   }
 
   public static setToken(token: string) {
-    localStorage.setItem('workflowhub_token', token);
+    sessionStorage.setItem('workflowhub_token', token);
   }
 
   public static removeToken() {
-    localStorage.removeItem('workflowhub_token');
-    localStorage.removeItem('workflowhub_refresh_token');
-    localStorage.removeItem('workflowhub_user');
-    localStorage.removeItem('workflowhub_role');
+    TokenStorage.clear();
   }
 
   public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -78,6 +77,16 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      // 401 Unauthorized Interceptor: auto-clear session and dispatch event if authenticated session expired
+      if (response.status === 401 && !cleanEndpoint.includes('/auth/login') && !cleanEndpoint.includes('/auth/register')) {
+        TokenStorage.clear();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('workflowhub:auth_expired', {
+            detail: { message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' }
+          }));
+        }
+      }
+
       let errorMessage = `Yêu cầu thất bại (${response.status})`;
       let errorCode: string | undefined = undefined;
       try {
@@ -130,14 +139,10 @@ export const AuthService = {
   /**
    * POST /api/v1/auth/login
    */
-  async login(credentials: { email: string; password: string }): Promise<ApiResponse<AuthResponse>> {
+  async login(credentials: { email: string; password: string }, rememberMe = false): Promise<ApiResponse<AuthResponse>> {
     const res = await ApiClient.post<ApiResponse<AuthResponse>>('/auth/login', credentials);
     if (res.data?.accessToken) {
-      ApiClient.setToken(res.data.accessToken);
-      if (res.data.refreshToken) {
-        localStorage.setItem('workflowhub_refresh_token', res.data.refreshToken);
-      }
-      localStorage.setItem('workflowhub_user', JSON.stringify(res.data.user));
+      TokenStorage.saveAuth(res.data.accessToken, res.data.user, res.data.refreshToken, rememberMe);
     }
     return res;
   },
@@ -145,14 +150,10 @@ export const AuthService = {
   /**
    * POST /api/v1/auth/login-google
    */
-  async loginGoogle(idToken: string): Promise<ApiResponse<AuthResponse>> {
+  async loginGoogle(idToken: string, rememberMe = false): Promise<ApiResponse<AuthResponse>> {
     const res = await ApiClient.post<ApiResponse<AuthResponse>>('/auth/login-google', { idToken });
     if (res.data?.accessToken) {
-      ApiClient.setToken(res.data.accessToken);
-      if (res.data.refreshToken) {
-        localStorage.setItem('workflowhub_refresh_token', res.data.refreshToken);
-      }
-      localStorage.setItem('workflowhub_user', JSON.stringify(res.data.user));
+      TokenStorage.saveAuth(res.data.accessToken, res.data.user, res.data.refreshToken, rememberMe);
     }
     return res;
   },
