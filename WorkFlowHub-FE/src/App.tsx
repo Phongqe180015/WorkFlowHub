@@ -10,12 +10,14 @@ import { ProjectManagerDashboard } from './pages/ProjectManagerDashboard';
 import { DeveloperDashboard } from './pages/DeveloperDashboard';
 import { ViewerDashboard } from './pages/ViewerDashboard';
 
+import { TokenStorage } from './utils/tokenStorage';
+
 const MainApp: React.FC = () => {
-  const { currentRole, setCurrentRole, user, isAuthenticated } = useAuth();
+  const { currentRole, setCurrentRole, user, isAuthenticated, sessionExpiredMessage } = useAuth();
 
   const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('token') || localStorage.getItem('workflowhub_token')) {
+    if (params.has('token') || TokenStorage.getToken()) {
       return 'dashboard';
     }
     return 'home';
@@ -29,8 +31,18 @@ const MainApp: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('token') || isAuthenticated) {
       setCurrentPage('dashboard');
+    } else if (!isAuthenticated && currentPage === 'dashboard') {
+      setCurrentPage('home');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentPage]);
+
+  // When session expires, prompt user to log back in
+  useEffect(() => {
+    if (sessionExpiredMessage && !isAuthenticated) {
+      setAuthMode('login');
+      setAuthModalOpen(true);
+    }
+  }, [sessionExpiredMessage, isAuthenticated]);
 
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);

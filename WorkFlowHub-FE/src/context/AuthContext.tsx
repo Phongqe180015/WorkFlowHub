@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User } from '../types';
 import { AuthService } from '../services/api';
+import { TokenStorage } from '../utils/tokenStorage';
+import { useIdleTimeout } from '../hooks/useIdleTimeout';
 
 export type RoleType = 'ADMIN' | 'USER' | 'PROJECT_MANAGER' | 'DEVELOPER' | 'VIEWER';
 
@@ -9,49 +11,93 @@ interface AuthContextType {
   currentRole: RoleType;
   setCurrentRole: (role: RoleType) => void;
   token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => Promise<void>;
+  login: (token: string, user: User, rememberMe?: boolean) => void;
+  logout: (reason?: string) => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  sessionExpiredMessage: string | null;
+  clearSessionExpiredMessage: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 15 minutes of inactivity before auto-logout
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('workflowhub_token');
+    // Reads from sessionStorage or localStorage, automatically checks JWT 'exp'
+    return TokenStorage.getToken();
   });
 
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('workflowhub_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return null;
+    const validToken = TokenStorage.getToken();
+    if (!validToken) return null;
+    return TokenStorage.getUser<User>();
   });
 
   const [currentRole, setCurrentRole] = useState<RoleType>(() => {
-    const savedRole = localStorage.getItem('workflowhub_role');
+    const validToken = TokenStorage.getToken();
+    if (!validToken) return 'USER';
+
+    const savedRole = TokenStorage.getRole();
     if (savedRole) {
       return savedRole as RoleType;
     }
-    const savedUser = localStorage.getItem('workflowhub_user');
+    const savedUser = TokenStorage.getUser<User>();
     if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        const rawRole = (parsed.roleName || parsed.role || 'USER').toUpperCase();
-        return rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
-      } catch {
-        // ignore
-      }
+      const rawRole = (savedUser.roleName || (savedUser as any).role || 'USER').toUpperCase();
+      return rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
     }
     return 'USER';
   });
 
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
+
+  const clearSessionExpiredMessage = useCallback(() => {
+    setSessionExpiredMessage(null);
+  }, []);
+
+  const logout = useCallback(async (reason?: string) => {
+    try {
+      await AuthService.logout();
+    } catch (err) {
+      console.warn('Logout API error:', err);
+    } finally {
+      TokenStorage.clear();
+      setToken(null);
+      setUser(null);
+      setCurrentRole('USER');
+      if (reason) {
+        setSessionExpiredMessage(reason);
+      }
+    }
+  }, []);
+
+  // Idle Timeout: auto-logout after 15 minutes without user activity
+  useIdleTimeout({
+    enabled: !!token && !!user,
+    timeoutMs: IDLE_TIMEOUT_MS,
+    onIdle: () => {
+      logout('Phiên làm việc đã tự động kết thúc do bạn không thao tác trong 15 phút.');
+    },
+  });
+
+  // Listen for 401 Unauthorized events from ApiClient interceptor
+  useEffect(() => {
+    const handleAuthExpired = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      const message = customEvent.detail?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      logout(message);
+    };
+
+    window.addEventListener('workflowhub:auth_expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('workflowhub:auth_expired', handleAuthExpired);
+    };
+  }, [logout]);
+
+  // Handle OAuth Redirect URL parameters
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get('token');
@@ -61,10 +107,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (tokenParam && userParam) {
       try {
         const parsedUser = JSON.parse(decodeURIComponent(userParam));
+        // Default OAuth redirect: session storage (no permanent persistence on reboot)
+        login(tokenParam, parsedUser, false);
         if (refreshTokenParam) {
-          localStorage.setItem('workflowhub_refresh_token', refreshTokenParam);
+          sessionStorage.setItem('workflowhub_refresh_token', refreshTokenParam);
         }
-        login(tokenParam, parsedUser);
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (err) {
         console.error('Failed to parse OAuth redirect params:', err);
@@ -73,37 +120,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('workflowhub_role', currentRole);
+    TokenStorage.saveRole(currentRole);
   }, [currentRole]);
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
-    setUser(newUser);
-
-    // Lấy roleName từ backend (ví dụ: 'Admin' hoặc 'User')
-    const rawRole = (newUser.roleName || newUser.role || 'USER').toUpperCase();
+  const login = (newToken: string, newUser: User, rememberMe = false) => {
+    const rawRole = (newUser.roleName || (newUser as any).role || 'USER').toUpperCase();
     const normalizedRole: RoleType = rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
 
-    setCurrentRole(normalizedRole);
-    localStorage.setItem('workflowhub_token', newToken);
-    localStorage.setItem('workflowhub_user', JSON.stringify(newUser));
-    localStorage.setItem('workflowhub_role', normalizedRole);
-  };
+    TokenStorage.saveAuth(newToken, newUser, null, rememberMe);
 
-  const logout = async () => {
-    try {
-      await AuthService.logout();
-    } catch (err) {
-      console.warn('Logout API error:', err);
-    } finally {
-      setToken(null);
-      setUser(null);
-      setCurrentRole('USER');
-      localStorage.removeItem('workflowhub_token');
-      localStorage.removeItem('workflowhub_refresh_token');
-      localStorage.removeItem('workflowhub_user');
-      localStorage.removeItem('workflowhub_role');
-    }
+    setToken(newToken);
+    setUser(newUser);
+    setCurrentRole(normalizedRole);
+    setSessionExpiredMessage(null);
   };
 
   const isAdmin = (user?.roleName || currentRole || '').toUpperCase() === 'ADMIN';
@@ -119,6 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         isAuthenticated: !!token && !!user,
         isAdmin,
+        sessionExpiredMessage,
+        clearSessionExpiredMessage,
       }}
     >
       {children}
