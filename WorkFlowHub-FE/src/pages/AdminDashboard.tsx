@@ -9,12 +9,12 @@ export const AdminDashboard: React.FC = () => {
   const [periodicBackup, setPeriodicBackup] = useState(false);
 
   const sidebarItems = [
-    { id: 'overview', label: 'Tổng quan' },
-    { id: 'members', label: 'Thành viên' },
-    { id: 'billing', label: 'Thanh toán' },
-    { id: 'security', label: 'Bảo mật' },
-    { id: 'settings', label: 'Thiết lập hệ thống' },
-    { id: 'audit', label: 'Nhật ký' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'members', label: 'Members' },
+    { id: 'billing', label: 'Billing' },
+    { id: 'security', label: 'Security' },
+    { id: 'settings', label: 'System Settings' },
+    { id: 'audit', label: 'Audit Logs' },
   ];
 
   return (
@@ -24,7 +24,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="lg:col-span-3">
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-1">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider px-3 py-2 uppercase">
-              Quản trị
+              Admin
             </div>
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -54,9 +54,9 @@ export const AdminDashboard: React.FC = () => {
         <div className="lg:col-span-9 space-y-6">
           {/* Header Title */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tổng quan</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Overview</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Giao diện demo cho vai trò <strong className="font-semibold text-gray-700">Quản trị</strong> — dữ liệu minh họa, chưa lưu thật.
+              Demo interface for <strong className="font-semibold text-gray-700">Admin</strong> role — sample data preview.
             </p>
           </div>
 
@@ -64,19 +64,19 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">18</div>
-              <div className="text-[11px] text-gray-500 mt-1">Thành viên hoạt động</div>
+              <div className="text-[11px] text-gray-500 mt-1">Active Members</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">6</div>
-              <div className="text-[11px] text-gray-500 mt-1">Dự án đang chạy</div>
+              <div className="text-[11px] text-gray-500 mt-1">Active Projects</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">3.58Mđ</div>
-              <div className="text-[11px] text-gray-500 mt-1">Chi phí gói tháng này</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900">3.58M VND</div>
+              <div className="text-[11px] text-gray-500 mt-1">Current Month Plan Cost</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">2</div>
-              <div className="text-[11px] text-gray-500 mt-1">Yêu cầu phê duyệt</div>
+              <div className="text-[11px] text-gray-500 mt-1">Approval Requests</div>
             </div>
           </div>
 
@@ -84,11 +84,11 @@ export const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Thành viên</h3>
-                <p className="text-[11px] text-gray-500">Bảng thành viên đầy đủ: tên, email, vai trò, trạng thái.</p>
+                <h3 className="text-sm font-bold text-gray-900">Members</h3>
+                <p className="text-[11px] text-gray-500">Full members table: name, email, role, status.</p>
               </div>
               <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold shadow-xs cursor-pointer">
-                <Plus size={14} /> Mời thành viên
+                <Plus size={14} /> Invite Member
               </button>
             </div>
 
@@ -120,7 +120,7 @@ export const AdminDashboard: React.FC = () => {
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
-                      {member.status === 'active' ? 'Đang hoạt động' : 'Mời chưa nhận'}
+                      {member.status === 'active' ? 'Active' : 'Pending Invite'}
                     </span>
                   </div>
                 </div>
@@ -132,19 +132,19 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Billing Card */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Thanh toán</h3>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Billing</h3>
               <div className="flex items-baseline justify-between">
                 <div>
-                  <div className="text-sm font-bold text-gray-900">Gói Pro</div>
-                  <div className="text-[11px] text-gray-500 mt-0.5">18 người × 199.000đ / tháng</div>
+                  <div className="text-sm font-bold text-gray-900">Pro Plan</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">18 members × 199,000 VND / month</div>
                 </div>
-                <div className="text-lg font-bold text-gray-900">3.58Mđ</div>
+                <div className="text-lg font-bold text-gray-900">3.58M VND</div>
               </div>
 
               <div className="pt-2">
                 <div className="flex justify-between text-[11px] text-gray-500 mb-1.5">
-                  <span>Chu kỳ hiện tại</span>
-                  <span>còn 12 ngày</span>
+                  <span>Current Billing Cycle</span>
+                  <span>12 days left</span>
                 </div>
                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full w-2/5"></div>
@@ -154,14 +154,14 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Security and Settings Card */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Bảo mật và thiết lập</h3>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Security & Configuration</h3>
 
               <div className="space-y-3 divide-y divide-gray-100 text-xs">
                 {/* 2FA Toggle */}
                 <div className="flex items-center justify-between pt-1">
                   <div>
-                    <div className="font-semibold text-gray-900">Xác thực hai lớp bắt buộc</div>
-                    <div className="text-[11px] text-gray-400">Bật cho tất cả thành viên</div>
+                    <div className="font-semibold text-gray-900">Enforce Two-Factor Authentication (2FA)</div>
+                    <div className="text-[11px] text-gray-400">Enable for all organization members</div>
                   </div>
                   <button
                     onClick={() => setTwoFactorAuth(!twoFactorAuth)}
@@ -180,8 +180,8 @@ export const AdminDashboard: React.FC = () => {
                 {/* Google SSO */}
                 <div className="flex items-center justify-between pt-3">
                   <div>
-                    <div className="font-semibold text-gray-900">Đăng nhập bằng Google</div>
-                    <div className="text-[11px] text-gray-400">Cho phép SSO Workspace</div>
+                    <div className="font-semibold text-gray-900">Sign in with Google</div>
+                    <div className="text-[11px] text-gray-400">Allow Workspace SSO logins</div>
                   </div>
                   <button
                     onClick={() => setGoogleSSO(!googleSSO)}
@@ -200,8 +200,8 @@ export const AdminDashboard: React.FC = () => {
                 {/* Export Data */}
                 <div className="flex items-center justify-between pt-3">
                   <div>
-                    <div className="font-semibold text-gray-900">Xuất dữ liệu định kỳ</div>
-                    <div className="text-[11px] text-gray-400">Sao lưu hàng tuần vào kho lưu trữ</div>
+                    <div className="font-semibold text-gray-900">Automated Data Backups</div>
+                    <div className="text-[11px] text-gray-400">Weekly cloud repository archive</div>
                   </div>
                   <button
                     onClick={() => setPeriodicBackup(!periodicBackup)}

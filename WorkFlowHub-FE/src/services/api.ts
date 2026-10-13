@@ -29,14 +29,14 @@ export class ApiError extends Error {
 }
 
 const ERROR_CODE_TRANSLATIONS: Record<string, string> = {
-  bad_request_data_missed_field: 'Vui lòng điền đầy đủ các thông tin bắt buộc.',
-  bad_request_data_length_invalid: 'Độ dài ký tự nhập vào không hợp lệ hoặc vượt quá giới hạn.',
+  bad_request_data_missed_field: 'Please fill in all required fields.',
+  bad_request_data_length_invalid: 'Input character length is invalid or exceeds the limit.',
   'Only the Project Manager or the person assigned the task has the authority to change the task status.':
-    'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
+    'Only the Project Manager or the person assigned to the task has permission to change task status.',
   'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.':
-    'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
-  FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này.',
-  UNAUTHORIZED: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.',
+    'Only the Project Manager or the person assigned to the task has permission to change task status.',
+  FORBIDDEN: 'You do not have permission to perform this action.',
+  UNAUTHORIZED: 'Your session has expired. Please log in again.',
 };
 
 const ENV_API_URL = import.meta.env.VITE_API_URL;
@@ -82,12 +82,12 @@ export class ApiClient {
         TokenStorage.clear();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('workflowhub:auth_expired', {
-            detail: { message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' }
+            detail: { message: 'Your session has expired. Please log in again.' }
           }));
         }
       }
 
-      let errorMessage = `Yêu cầu thất bại (${response.status})`;
+      let errorMessage = `Request failed (${response.status})`;
       let errorCode: string | undefined = undefined;
       try {
         const errorData = await response.json();

@@ -36,15 +36,15 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Vui lòng nhập tên Sprint');
+      setError('Please enter a Sprint name');
       return;
     }
     if (!startDate || !endDate) {
-      setError('Vui lòng chọn ngày bắt đầu và kết thúc');
+      setError('Please select both start and end dates');
       return;
     }
     if (new Date(startDate) > new Date(endDate)) {
-      setError('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu');
+      setError('End date must be on or after start date');
       return;
     }
 
@@ -70,8 +70,8 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
       onSuccess(createdSprint);
       onClose();
     } catch (err: any) {
-      console.error('Lỗi khi tạo sprint:', err);
-      setError(err.message || 'Không thể tạo Sprint. Vui lòng thử lại!');
+      console.error('Error creating sprint:', err);
+      setError(err.message || 'Could not create Sprint. Please try again!');
       setLoading(false);
     }
   };
@@ -92,9 +92,9 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
             <Sparkles size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Tạo Sprint mới</h2>
+            <h2 className="text-xl font-bold text-gray-900">Create New Sprint</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Lập kế hoạch chu kỳ lặp lại cho dự án của bạn
+              Plan iteration cycles for your project
             </p>
           </div>
         </div>
@@ -109,14 +109,14 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Tên Sprint <span className="text-red-500">*</span>
+              Sprint Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Sprint 1 - Thiết kế tính năng & Database"
+              placeholder="e.g. Sprint 1 - Core Architecture & Database"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
               disabled={loading}
             />
@@ -124,13 +124,13 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Mục tiêu Sprint
+              Sprint Goal
             </label>
             <textarea
               rows={2}
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="Mục tiêu cốt lõi mà đội ngũ cần đạt được trong đợt này..."
+              placeholder="Primary milestone the team aims to deliver this cycle..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 resize-none"
               disabled={loading}
             />
@@ -140,7 +140,7 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Calendar size={13} className="text-gray-400" />
-                <span>Ngày bắt đầu</span>
+                <span>Start Date</span>
               </label>
               <input
                 type="date"
@@ -154,7 +154,7 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Calendar size={13} className="text-gray-400" />
-                <span>Ngày kết thúc</span>
+                <span>End Date</span>
               </label>
               <input
                 type="date"
@@ -169,7 +169,7 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Trạng thái khởi tạo
+              Initial Status
             </label>
             <select
               value={status}
@@ -177,9 +177,9 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
               disabled={loading}
             >
-              <option value="PLANNED">Dự kiến (PLANNED)</option>
-              <option value="ACTIVE">Đang diễn ra (ACTIVE)</option>
-              <option value="COMPLETED">Đã kết thúc (COMPLETED)</option>
+              <option value="PLANNED">Planned</option>
+              <option value="ACTIVE">Active (In Progress)</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
 
@@ -190,7 +190,7 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
               disabled={loading}
               className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -198,7 +198,7 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {loading && <Loader2 size={14} className="animate-spin" />}
-              {loading ? 'Đang tạo...' : 'Tạo Sprint'}
+              {loading ? 'Creating...' : 'Create Sprint'}
             </button>
           </div>
         </form>

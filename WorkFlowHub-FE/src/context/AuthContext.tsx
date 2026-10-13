@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     enabled: !!token && !!user,
     timeoutMs: IDLE_TIMEOUT_MS,
     onIdle: () => {
-      logout('Phiên làm việc đã tự động kết thúc do bạn không thao tác trong 15 phút.');
+      logout('Your session was automatically terminated due to 15 minutes of inactivity.');
     },
   });
 
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleAuthExpired = (event: Event) => {
       const customEvent = event as CustomEvent<{ message?: string }>;
-      const message = customEvent.detail?.message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      const message = customEvent.detail?.message || 'Your session has expired. Please log in again.';
       logout(message);
     };
 

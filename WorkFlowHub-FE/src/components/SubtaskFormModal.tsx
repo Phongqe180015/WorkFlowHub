@@ -81,7 +81,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('Vui lòng nhập tiêu đề việc phụ (Subtask)');
+      setError('Please enter a subtask title');
       return;
     }
 
@@ -121,8 +121,8 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      console.error('Lỗi khi lưu subtask:', err);
-      setError(err.message || 'Không thể lưu việc phụ. Vui lòng thử lại!');
+      console.error('Error saving subtask:', err);
+      setError(err.message || 'Could not save subtask. Please try again!');
     } finally {
       setLoading(false);
     }
@@ -145,10 +145,10 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              {isEdit ? 'Chỉnh sửa việc phụ (Subtask)' : 'Thêm việc phụ chi tiết (Subtask)'}
+              {isEdit ? 'Edit Subtask' : 'Add New Subtask'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              {isEdit ? `Cập nhật thông tin chi tiết cho subtask #${subtask?.id}` : `Tạo checklist chi tiết cho Task #${taskId}`}
+              {isEdit ? `Update details for subtask #${subtask?.id}` : `Create checklist item for Task #${taskId}`}
             </p>
           </div>
         </div>
@@ -163,14 +163,14 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Tiêu đề việc phụ <span className="text-red-500">*</span>
+              Subtask Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Thiết kế schema database, Viết unit test..."
+              placeholder="e.g. Design database schema, Write integration tests..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
               disabled={loading}
             />
@@ -178,27 +178,27 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Mô tả chi tiết
+              Detailed Description
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Mô tả cụ thể phạm vi công việc của subtask này..."
+              placeholder="Describe specific scope or criteria for this subtask..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 resize-none"
               disabled={loading}
             />
           </div>
 
-          {/* Giao cho thành viên */}
+          {/* Assignee */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <User size={13} className="text-emerald-600" />
-                <span>Giao cho thành viên</span>
+                <span>Assignee</span>
               </span>
               <span className="text-[10px] text-gray-400 font-normal">
-                (Thành viên dự án)
+                (Project members)
               </span>
             </label>
             <select
@@ -207,7 +207,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
               className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
               disabled={loading}
             >
-              <option value="">-- Chưa gán (Để trống) --</option>
+              <option value="">-- Unassigned --</option>
               {members.map((member) => (
                 <option key={member.userId} value={member.userId}>
                   {member.userName || `User #${member.userId}`} {member.userEmail ? `(${member.userEmail})` : ''} - [{member.roleName || 'Member'}]
@@ -217,46 +217,46 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Ước lượng thời gian EST */}
+            {/* Estimate */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Clock size={13} className="text-gray-400" />
-                <span>Ước lượng (EST)</span>
+                <span>Estimate (EST)</span>
               </label>
               <input
                 type="text"
                 value={estimate}
                 onChange={(e) => setEstimate(e.target.value)}
-                placeholder="VD: 2h, 4h, 1d, 3pts..."
+                placeholder="e.g. 2h, 4h, 1d, 3pts..."
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
                 disabled={loading}
               />
             </div>
 
-            {/* Độ ưu tiên */}
+            {/* Priority */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Flag size={13} className="text-gray-400" />
-                <span>Độ ưu tiên</span>
+                <span>Priority</span>
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
                 disabled={loading}
               >
-                <option value="LOW">Thấp (Low)</option>
-                <option value="MEDIUM">Trung bình (Medium)</option>
-                <option value="HIGH">Cao (High)</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
               </select>
             </div>
           </div>
 
-          {/* Hạn hoàn thành */}
+          {/* Due date */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
               <Calendar size={13} className="text-gray-400" />
-              <span>Hạn hoàn thành (Deadline)</span>
+              <span>Due Date</span>
             </label>
             <input
               type="date"
@@ -267,7 +267,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
             />
           </div>
 
-          {/* Trạng thái hoàn thành (khi Edit) */}
+          {/* Completion status (when editing) */}
           {isEdit && (
             <div className="pt-2">
               <label className={`flex items-center gap-2 text-xs font-medium text-gray-700 ${
@@ -282,12 +282,12 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
                 />
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 size={14} className={isCompleted ? 'text-emerald-600' : 'text-gray-400'} />
-                  <span>Đã hoàn thành việc phụ này</span>
+                  <span>Mark this subtask as completed</span>
                 </span>
               </label>
               {!canChangeStatus && (
                 <span className="text-[10px] text-amber-600 block mt-1">
-                  Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái
+                  Only the PM or the assignee has permission to change status
                 </span>
               )}
             </div>
@@ -300,7 +300,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
               disabled={loading}
               className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -308,7 +308,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
-              <span>{isEdit ? 'Cập nhật Subtask' : 'Tạo việc phụ'}</span>
+              <span>{isEdit ? 'Update Subtask' : 'Create Subtask'}</span>
             </button>
           </div>
         </form>

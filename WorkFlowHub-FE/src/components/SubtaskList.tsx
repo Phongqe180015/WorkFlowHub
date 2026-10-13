@@ -41,7 +41,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     message: '',
   });
 
-  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+  const showErrorModal = (message: string, title: string = 'Error Notice', code?: string) => {
     setErrorModalState({
       isOpen: true,
       title,
@@ -108,8 +108,8 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     const target = subtasks.find((s) => s.id === subtaskId);
     if (target && !canToggleSubtask(target)) {
       showErrorModal(
-        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái việc phụ.',
-        'Từ chối quyền truy cập',
+        'Only Project Managers or the assigned member can change subtask status.',
+        'Access Denied',
         'FORBIDDEN'
       );
       return;
@@ -126,18 +126,18 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
         onSubtasksChange(updated);
       }
     } catch (err: any) {
-      console.error('Lỗi khi đổi trạng thái subtask:', err);
+      console.error('Failed to change subtask status:', err);
       setSubtasks(previousSubtasks);
       showErrorModal(
-        err.message || 'Không thể thay đổi trạng thái việc phụ.',
-        'Từ chối quyền truy cập',
+        err.message || 'Unable to change subtask status.',
+        'Access Denied',
         err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
       );
     }
   };
 
   const handleDelete = async (subtaskId: number | string) => {
-    if (!confirm('Bạn có chắc muốn xóa việc phụ này?')) return;
+    if (!confirm('Are you sure you want to delete this subtask?')) return;
     setSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
     const updated = await SubtaskService.deleteSubtask(taskId, subtaskId);
     setSubtasks(updated);
@@ -178,7 +178,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
       <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
         <div className="flex items-center gap-1.5">
           <ListChecks size={15} className="text-emerald-600" />
-          <span>Danh sách việc phụ (Subtasks)</span>
+          <span>Subtasks</span>
           <span className="text-[11px] text-gray-500 font-normal">
             ({completedCount}/{subtasks.length})
           </span>
@@ -194,10 +194,10 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
             type="button"
             onClick={openCreateModal}
             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Thêm subtask có đầy đủ mô tả, người phụ trách và ước lượng"
+            title="Add subtask with description, assignee, and estimate"
           >
             <Sparkles size={12} className="text-emerald-600" />
-            <span>+ Tạo chi tiết</span>
+            <span>+ Add Detailed</span>
           </button>
         </div>
       </div>
@@ -215,7 +215,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
       <div className="space-y-1.5 pt-1">
         {subtasks.length === 0 ? (
           <div className="text-[11px] text-gray-400 py-1 italic">
-            Chưa có công việc phụ nào. Thêm nhanh bên dưới hoặc bấm &quot;+ Tạo chi tiết&quot;:
+            No subtasks yet. Quick add below or click &quot;+ Add Detailed&quot;:
           </div>
         ) : (
           subtasks.map((st) => {
@@ -230,7 +230,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                   type="button"
                   disabled={!canChange}
                   onClick={() => handleToggle(st.id)}
-                  title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                  title={!canChange ? 'Only PM or the assignee can toggle status' : undefined}
                   className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 ${
                     !canChange ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   } ${
@@ -285,7 +285,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                     type="button"
                     onClick={() => onSelectSubtask(st)}
                     className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
-                    title="Xem chi tiết việc phụ"
+                    title="View subtask details"
                   >
                     <Eye size={13} />
                   </button>
@@ -296,7 +296,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                   type="button"
                   onClick={() => openEditModal(st)}
                   className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
-                  title="Chỉnh sửa việc phụ"
+                  title="Edit subtask"
                 >
                   <Edit3 size={13} />
                 </button>
@@ -306,7 +306,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                   type="button"
                   onClick={() => handleDelete(st.id)}
                   className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-                  title="Xóa việc phụ"
+                  title="Delete subtask"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -323,7 +323,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Thêm nhanh tiêu đề việc phụ..."
+          placeholder="Quick add subtask title..."
           className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-800"
         />
         <button
@@ -332,7 +332,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
         >
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-          <span>Thêm nhanh</span>
+          <span>Quick Add</span>
         </button>
       </form>
 

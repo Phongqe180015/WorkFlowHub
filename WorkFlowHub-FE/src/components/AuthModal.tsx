@@ -46,12 +46,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       } else {
         await AuthService.register({ email, password, name });
-        setSuccessMessage('Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.');
+        setSuccessMessage('Registration successful! You can now log in.');
         setMode('login');
       }
     } catch (err: any) {
       console.error('Auth request error:', err);
-      setError(err.message || 'Thao tác không thành công. Vui lòng kiểm tra lại thông tin!');
+      setError(err.message || 'Operation failed. Please check your credentials!');
     } finally {
       setLoading(false);
     }
@@ -76,12 +76,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             W
           </div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {mode === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}
+            {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
           </h2>
           <p className="text-xs text-gray-500 mt-1">
             {mode === 'login'
-              ? 'Đăng nhập để vào không gian làm việc của nhóm'
-              : 'Trải nghiệm quản lý sprint tinh gọn chỉ trong 2 phút'}
+              ? 'Log in to access your team workspace'
+              : 'Experience streamlined sprint management in 2 minutes'}
           </p>
         </div>
 
@@ -109,7 +109,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'register' && (
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Họ và tên</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
               <div className="relative">
                 <UserIcon className="absolute left-3.5 top-3 text-gray-400" size={18} />
                 <input
@@ -117,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Minh Trần"
+                  placeholder="John Doe"
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                 />
               </div>
@@ -125,7 +125,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 text-gray-400" size={18} />
               <input
@@ -140,7 +140,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Mật khẩu</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 text-gray-400" size={18} />
               <input
@@ -163,10 +163,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer w-3.5 h-3.5"
                 />
-                <span>Ghi nhớ đăng nhập</span>
+                <span>Remember me</span>
               </label>
-              <span className="text-[11px] text-gray-400" title="Nếu không chọn, phiên sẽ tự hủy khi tắt trình duyệt hoặc tắt máy">
-                (Tắt máy tự đăng xuất)
+              <span className="text-[11px] text-gray-400" title="If unchecked, session is destroyed when browser or machine is closed">
+                (Logout on browser close)
               </span>
             </div>
           )}
@@ -176,13 +176,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             disabled={loading}
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : (mode === 'login' ? 'Đăng nhập' : 'Đăng ký ngay')}
+            {loading ? <Loader2 size={16} className="animate-spin" /> : (mode === 'login' ? 'Log In' : 'Sign Up Now')}
           </button>
         </form>
 
         <div className="my-5 flex items-center gap-3">
           <div className="h-px bg-gray-200 flex-1"></div>
-          <span className="text-[11px] text-gray-400">hoặc</span>
+          <span className="text-[11px] text-gray-400">or</span>
           <div className="h-px bg-gray-200 flex-1"></div>
         </div>
 
@@ -197,13 +197,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
-          Đăng nhập bằng Google
+          Sign in with Google
         </button>
 
         <div className="mt-6 text-center text-xs text-gray-500">
           {mode === 'login' ? (
             <>
-              Chưa có tài khoản?{' '}
+              Don't have an account?{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -213,12 +213,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 }}
                 className="text-emerald-600 font-semibold hover:underline cursor-pointer"
               >
-                Đăng ký ngay
+                Sign up now
               </button>
             </>
           ) : (
             <>
-              Đã có tài khoản?{' '}
+              Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -228,7 +228,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 }}
                 className="text-emerald-600 font-semibold hover:underline cursor-pointer"
               >
-                Đăng nhập
+                Log in
               </button>
             </>
           )}

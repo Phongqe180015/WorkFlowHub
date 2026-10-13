@@ -69,7 +69,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     message: '',
   });
 
-  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+  const showErrorModal = (message: string, title: string = 'Error Notification', code?: string) => {
     setErrorModalState({
       isOpen: true,
       title,
@@ -124,8 +124,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const targetSt = subtasks.find((s) => s.id === stId);
     if (targetSt && !canToggleSubtask(targetSt)) {
       showErrorModal(
-        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái việc phụ.',
-        'Từ chối quyền truy cập',
+        'Only the Project Manager or the assignee has permission to toggle subtask status.',
+        'Access Denied',
         'FORBIDDEN'
       );
       return;
@@ -138,11 +138,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       const updated = await SubtaskService.toggleSubtask(task.id, stId);
       setSubtasks(updated);
     } catch (err: any) {
-      console.error('Lỗi khi đổi trạng thái subtask:', err);
+      console.error('Error toggling subtask status:', err);
       setSubtasks(previousSubtasks);
       showErrorModal(
-        err.message || 'Không thể thay đổi trạng thái việc phụ.',
-        'Từ chối quyền truy cập',
+        err.message || 'Could not change subtask status.',
+        'Access Denied',
         err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
       );
     }
@@ -187,7 +187,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 type="button"
                 onClick={() => onBackToParentTask(parentTask)}
                 className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer mr-1"
-                title="Quay lại Task cha"
+                title="Back to Parent Task"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -207,7 +207,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                   isSubtaskMode ? 'bg-teal-100 text-teal-800' : 'bg-emerald-100 text-emerald-800'
                 }`}>
-                  {isSubtaskMode ? 'Việc phụ (Subtask)' : 'Nhiệm vụ chính (Task)'}
+                  {isSubtaskMode ? 'Subtask' : 'Main Task'}
                 </span>
               </div>
             </div>
@@ -222,7 +222,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 className="px-3 py-1.5 bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Edit3 size={14} />
-                <span>Chỉnh sửa</span>
+                <span>Edit</span>
               </button>
             )}
 
@@ -233,7 +233,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 className="px-3 py-1.5 bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Edit3 size={14} />
-                <span>Chỉnh sửa</span>
+                <span>Edit</span>
               </button>
             )}
 
@@ -242,13 +242,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Bạn có chắc muốn xóa việc phụ "${subtask.title}"?`)) {
+                  if (confirm(`Are you sure you want to delete subtask "${subtask.title}"?`)) {
                     onDeleteSubtask(subtask.id, parentTask.id);
                     onClose();
                   }
                 }}
                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
-                title="Xóa việc phụ"
+                title="Delete subtask"
               >
                 <Trash2 size={16} />
               </button>
@@ -258,13 +258,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Bạn có chắc muốn xóa công việc "${task.title}"?`)) {
+                  if (confirm(`Are you sure you want to delete task "${task.title}"?`)) {
                     onDeleteTask(task.id);
                     onClose();
                   }
                 }}
                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
-                title="Xóa công việc"
+                title="Delete task"
               >
                 <Trash2 size={16} />
               </button>
@@ -286,7 +286,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           {isSubtaskMode && parentTask && (
             <div className="p-3 bg-teal-50/70 border border-teal-100 rounded-2xl flex items-center justify-between text-xs text-teal-900">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-teal-700 shrink-0">Thuộc Task lớn:</span>
+                <span className="font-semibold text-teal-700 shrink-0">Part of Task:</span>
                 <span className="truncate font-medium text-teal-950">
                   #{parentTask.id} - {parentTask.title}
                 </span>
@@ -297,7 +297,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   onClick={() => onBackToParentTask(parentTask)}
                   className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-800 rounded-lg font-semibold text-[11px] shrink-0 transition-all cursor-pointer shadow-2xs"
                 >
-                  Xem Task cha
+                  View Parent Task
                 </button>
               )}
             </div>
@@ -320,7 +320,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}>
                 <CheckCircle2 size={14} />
-                <span>{subtask?.isCompleted ? 'Đã hoàn thành' : 'Đang thực hiện'}</span>
+                <span>{subtask?.isCompleted ? 'Completed' : 'In Progress'}</span>
               </span>
             ) : (
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold ${
@@ -335,12 +335,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <CheckSquare size={13} />
                 <span>
                   {task?.status === 'DONE'
-                    ? 'Hoàn thành (Done)'
+                    ? 'Done'
                     : task?.status === 'IN_PROGRESS'
-                    ? 'Đang làm (In Progress)'
+                    ? 'In Progress'
                     : task?.status === 'CLOSED'
-                    ? 'Đã đóng (Closed)'
-                    : 'Cần làm (To Do)'}
+                    ? 'Closed'
+                    : 'To Do'}
                 </span>
               </span>
             )}
@@ -356,10 +356,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <Flag size={13} />
               <span>
                 {priority === 'HIGH'
-                  ? 'Ưu tiên Cao'
+                  ? 'High Priority'
                   : priority === 'MEDIUM'
-                  ? 'Ưu tiên Trung bình'
-                  : 'Ưu tiên Thấp'}
+                  ? 'Medium Priority'
+                  : 'Low Priority'}
               </span>
             </span>
 
@@ -367,7 +367,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             {estimate && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
                 <Clock size={13} />
-                <span>Ước lượng: {estimate}</span>
+                <span>Estimate: {estimate}</span>
               </span>
             )}
 
@@ -375,7 +375,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             {dueDate && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
                 <Calendar size={13} />
-                <span>Hạn chót: {dueDate}</span>
+                <span>Due Date: {dueDate}</span>
               </span>
             )}
           </div>
@@ -383,46 +383,46 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           {/* Description Section */}
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Mô tả chi tiết
+              Detailed Description
             </h3>
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-xs sm:text-sm text-gray-800 leading-relaxed whitespace-pre-wrap min-h-[70px]">
-              {description ? description : <span className="text-gray-400 italic">Chưa có mô tả chi tiết cho mục này.</span>}
+              {description ? description : <span className="text-gray-400 italic">No description provided for this item.</span>}
             </div>
           </div>
 
           {/* Two-Column Metadata Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            {/* Người thực hiện (Assignee) */}
+            {/* Assignee */}
             <div className="p-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 space-y-1.5">
               <div className="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
                 <User size={13} className="text-emerald-600" />
-                <span>Người thực hiện</span>
+                <span>Assignee</span>
               </div>
               <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold">
                   {(assigneeName || 'U').substring(0, 2).toUpperCase()}
                 </div>
-                <span>{assigneeName || 'Chưa phân công'}</span>
+                <span>{assigneeName || 'Unassigned'}</span>
               </div>
             </div>
 
-            {/* Sprint & Dự án */}
+            {/* Sprint */}
             <div className="p-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 space-y-1.5">
               <div className="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
                 <Layers size={13} className="text-emerald-600" />
-                <span>Chu kỳ Sprint</span>
+                <span>Sprint Cycle</span>
               </div>
               <div className="text-xs font-bold text-gray-900 truncate">
-                {sprintName || (task?.sprintId ? `Sprint #${task.sprintId}` : 'Chưa gán Sprint')}
+                {sprintName || (task?.sprintId ? `Sprint #${task.sprintId}` : 'Not assigned to Sprint')}
               </div>
             </div>
 
-            {/* Dự án */}
+            {/* Project */}
             {task?.projectName && (
               <div className="p-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 space-y-1.5">
                 <div className="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
                   <FolderKanban size={13} className="text-emerald-600" />
-                  <span>Dự án</span>
+                  <span>Project</span>
                 </div>
                 <div className="text-xs font-bold text-gray-900 truncate">
                   {task.projectName}
@@ -430,15 +430,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             )}
 
-            {/* Ngày tạo */}
+            {/* Created At */}
             {createdAt && (
               <div className="p-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 space-y-1.5">
                 <div className="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
                   <Clock size={13} className="text-gray-400" />
-                  <span>Thời gian tạo</span>
+                  <span>Created At</span>
                 </div>
                 <div className="text-xs font-medium text-gray-700">
-                  {new Date(createdAt).toLocaleString('vi-VN')}
+                  {new Date(createdAt).toLocaleString('en-US')}
                 </div>
               </div>
             )}
@@ -451,7 +451,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="flex items-center gap-2">
                   <ListChecks size={16} className="text-emerald-600" />
                   <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                    Danh sách việc phụ (Subtasks)
+                    Subtasks
                   </h3>
                   <span className="text-xs text-gray-500 font-semibold">
                     ({completedSubtasksCount}/{subtasks.length})
@@ -465,7 +465,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                   >
                     <Plus size={14} />
-                    <span>+ Thêm Subtask</span>
+                    <span>+ Add Subtask</span>
                   </button>
                 )}
               </div>
@@ -483,18 +483,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               {/* List */}
               {loadingSubtasks ? (
                 <div className="py-4 text-center text-xs text-gray-400">
-                  Đang tải danh sách việc phụ...
+                  Loading subtasks...
                 </div>
               ) : subtasks.length === 0 ? (
                 <div className="py-6 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-2xl space-y-2">
-                  <p>Nhiệm vụ này chưa có việc phụ nào.</p>
+                  <p>No subtasks found for this task.</p>
                   {onCreateSubtaskForTask && (
                     <button
                       type="button"
                       onClick={() => onCreateSubtaskForTask(task)}
                       className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer underline"
                     >
-                      Bấm vào đây để tạo việc phụ đầu tiên
+                      Click here to create the first subtask
                     </button>
                   )}
                 </div>
@@ -512,7 +512,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           type="button"
                           disabled={!canToggle}
                           onClick={() => handleToggleSubtaskItem(st.id)}
-                          title={!canToggle ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                          title={!canToggle ? 'Only PM or assignee can change status' : undefined}
                           className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
                             !canToggle ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                           } ${
@@ -563,7 +563,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           onClick={() => onSelectSubtask && onSelectSubtask(st, task)}
                           className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 rounded-lg transition-all cursor-pointer"
                         >
-                          Chi tiết &rarr;
+                          Details &rarr;
                         </button>
                       </div>
                     </div>
@@ -578,14 +578,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Modal Footer */}
         <div className="pt-4 border-t border-gray-100 flex items-center justify-between shrink-0">
           <div className="text-[11px] text-gray-400">
-            {isSubtaskMode ? 'Xem chi tiết việc phụ' : 'Xem chi tiết nhiệm vụ'}
+            {isSubtaskMode ? 'Subtask Details' : 'Task Details'}
           </div>
           <button
             type="button"
             onClick={onClose}
             className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
           >
-            Đóng
+            Close
           </button>
         </div>
       </div>

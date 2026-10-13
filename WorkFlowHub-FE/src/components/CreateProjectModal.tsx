@@ -27,12 +27,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Vui lòng nhập tên dự án');
+      setError('Please enter a project name');
       return;
     }
 
     if (!user?.id) {
-      setError('Không tìm thấy thông tin tài khoản người tạo. Vui lòng đăng nhập lại.');
+      setError('Creator account information not found. Please log in again.');
       return;
     }
 
@@ -40,19 +40,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     setError(null);
 
     try {
-      // 1. Tạo project trong table project
-      // Backend đã đồng thời tạo record trong project_members với role PROJECT_MANAGER
-      setStatusMessage('Đang khởi tạo dự án và thiết lập quyền Quản lý dự án...');
+      // 1. Create project in DB
+      // Backend creates record in project_members with role PROJECT_MANAGER
+      setStatusMessage('Initializing project and granting Project Manager permissions...');
       const createdProject = await ProjectService.createProject({
         name: name.trim(),
         description: description.trim() || undefined,
         ownerId: user.id,
       });
 
-      // 2. Chuyển không gian làm việc tại FE sang PROJECT_MANAGER
+      // 2. Switch workspace role in FE to PROJECT_MANAGER
       setCurrentRole('PROJECT_MANAGER');
 
-      setStatusMessage('Tạo dự án thành công!');
+      setStatusMessage('Project created successfully!');
       setTimeout(() => {
         setName('');
         setDescription('');
@@ -62,8 +62,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         onClose();
       }, 500);
     } catch (err: any) {
-      console.error('Lỗi khi tạo dự án:', err);
-      setError(err.message || 'Không thể tạo dự án. Vui lòng thử lại!');
+      console.error('Error creating project:', err);
+      setError(err.message || 'Could not create project. Please try again!');
       setLoading(false);
       setStatusMessage(null);
     }
@@ -85,9 +85,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             <FolderPlus size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Tạo dự án mới</h2>
+            <h2 className="text-xl font-bold text-gray-900">Create New Project</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Bạn sẽ là <span className="font-semibold text-emerald-700">Project Manager</span> của dự án này
+              You will be assigned as <span className="font-semibold text-emerald-700">Project Manager</span> for this project
             </p>
           </div>
         </div>
@@ -113,14 +113,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Tên dự án <span className="text-red-500">*</span>
+              Project Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Hệ thống Quản trị Sprint"
+              placeholder="e.g. Sprint Management System"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
               disabled={loading}
             />
@@ -128,13 +128,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Mô tả dự án
+              Project Description
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Mô tả mục tiêu, phạm vi hoặc thông tin chi tiết về dự án..."
+              placeholder="Describe goals, scope, or details about the project..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800 resize-none"
               disabled={loading}
             />
@@ -142,12 +142,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
           <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 text-xs text-gray-600 space-y-1">
             <div className="font-semibold text-gray-800 flex items-center gap-1.5">
-              <span>✨ Đặc quyền sau khi tạo:</span>
+              <span>✨ Privileges upon creation:</span>
             </div>
             <ul className="list-disc list-inside text-[11px] text-gray-500 space-y-0.5">
-              <li>Vai trò của bạn tự động được cấp quyền <strong className="text-emerald-700">Project Manager</strong>.</li>
-              <li>Được tạo và quản lý các chu kỳ <strong className="text-gray-700">Sprint</strong>.</li>
-              <li>Được <strong className="text-gray-700">thêm thành viên</strong> và chỉ định vai trò cho từng người.</li>
+              <li>Automatically designated as <strong className="text-emerald-700">Project Manager</strong>.</li>
+              <li>Create and manage <strong className="text-gray-700">Sprint cycles</strong>.</li>
+              <li><strong className="text-gray-700">Add members</strong> and assign specific project roles.</li>
             </ul>
           </div>
 
@@ -158,7 +158,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               disabled={loading}
               className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -166,7 +166,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {loading && <Loader2 size={14} className="animate-spin" />}
-              {loading ? 'Đang khởi tạo...' : 'Tạo dự án & Bắt đầu'}
+              {loading ? 'Initializing...' : 'Create Project & Start'}
             </button>
           </div>
         </form>

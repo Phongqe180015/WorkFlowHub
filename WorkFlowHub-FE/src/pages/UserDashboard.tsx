@@ -55,7 +55,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     message: '',
   });
 
-  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+  const showErrorModal = (message: string, title: string = 'Error Notice', code?: string) => {
     setErrorModalState({
       isOpen: true,
       title,
@@ -64,17 +64,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     });
   };
 
-  // Danh sách công việc cá nhân (100% dữ liệu thực từ Backend API)
+  // Personal task list (Real data from Backend API)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
 
-  // Projects list (100% dữ liệu thực từ backend)
+  // Projects list (Real data from backend)
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
-  // Hoạt động gần đây (Dữ liệu thực từ backend)
+  // Recent activities (Real data from backend)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
 
@@ -157,7 +157,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setIsDetailModalOpen(false);
     } catch (err) {
-      console.warn('Lỗi khi xóa task:', err);
+      console.warn('Error deleting task:', err);
     }
   };
 
@@ -180,12 +180,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
   };
 
   const sidebarItems = [
-    { id: 'myTasks', label: 'Công việc của tôi', icon: ListTodo },
-    { id: 'myProjects', label: 'Dự án tham gia', icon: FolderKanban },
-    { id: 'activities', label: 'Hoạt động gần đây', icon: Activity },
+    { id: 'myTasks', label: 'My Tasks', icon: ListTodo },
+    { id: 'myProjects', label: 'My Projects', icon: FolderKanban },
+    { id: 'activities', label: 'Recent Activities', icon: Activity },
   ];
 
-  // 1. Tải danh sách dự án
+  // 1. Load projects list
   useEffect(() => {
     const fetchProjects = async () => {
       setLoadingProjects(true);
@@ -196,22 +196,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             const role = (p.currentUserRole || '').toUpperCase();
             const isOwner = p.ownerId === user?.id || role === 'PROJECT_MANAGER';
             const roleLabel = role === 'PROJECT_MANAGER' || isOwner
-              ? 'Project Manager (Quản lý)'
+              ? 'Project Manager'
               : role === 'DEVELOPER'
-              ? 'Developer (Phát triển)'
+              ? 'Developer'
               : role === 'TESTER'
-              ? 'Tester (Kiểm thử)'
+              ? 'Tester'
               : role === 'VIEWER'
-              ? 'Viewer (Người xem)'
-              : p.currentUserRole || 'Thành viên';
+              ? 'Viewer'
+              : p.currentUserRole || 'Member';
 
             return {
               id: p.id,
               name: p.name,
-              description: p.description || 'Chưa có mô tả dự án',
+              description: p.description || 'No project description',
               membersCount: 1,
               progress: 0,
-              activeSprint: 'Chưa có sprint',
+              activeSprint: 'No active sprint',
               roleInProject: roleLabel,
               currentUserRole: p.currentUserRole,
               ownerId: p.ownerId,
@@ -229,7 +229,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     fetchProjects();
   }, [user?.id]);
 
-  // 2. Tải danh sách công việc của user từ Backend API
+  // 2. Load user tasks from Backend API
   useEffect(() => {
     if (user?.id) {
       loadUserTasks();
@@ -240,24 +240,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     if (!user?.id) return;
     setLoadingTasks(true);
     try {
-      // Gọi API lấy công việc được phân công cho user
       const myTasks = await TaskService.getMyTasks(user.id);
       if (myTasks) {
-        // Chỉ lấy đúng các task được gán cho user hiện tại (assigneeId === user.id)
         const onlyMyTasks = myTasks.filter((t) => t.assigneeId === user.id);
         setTasks(onlyMyTasks);
       } else {
         setTasks([]);
       }
     } catch (err) {
-      console.warn('Lỗi khi tải công việc của tôi từ máy chủ:', err);
+      console.warn('Error loading my tasks from server:', err);
       setTasks([]);
     } finally {
       setLoadingTasks(false);
     }
   };
 
-  // 3. Tải hoạt động gần đây từ API
+  // 3. Load recent activities
   useEffect(() => {
     if (activeTab === 'activities') {
       loadActivities();
@@ -270,7 +268,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       const logs = await ActivityLogService.getActivityLogs(0, 20);
       setActivityLogs(logs || []);
     } catch (err) {
-      console.warn('Lỗi khi tải hoạt động từ máy chủ:', err);
+      console.warn('Error loading activities from server:', err);
       setActivityLogs([]);
     } finally {
       setLoadingActivities(false);
@@ -281,17 +279,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     const projectItem = {
       id: newProject.id,
       name: newProject.name,
-      description: newProject.description || 'Chưa có mô tả dự án',
+      description: newProject.description || 'No project description',
       membersCount: 1,
       progress: 0,
-      activeSprint: 'Chưa bắt đầu sprint',
-      roleInProject: 'Project Manager (Quản lý)',
+      activeSprint: 'No sprint started',
+      roleInProject: 'Project Manager',
       currentUserRole: 'PROJECT_MANAGER',
       ownerId: newProject.ownerId,
     };
     setProjectsList((prev) => [projectItem, ...prev]);
     setCreatedProjectNotification(
-      `Đã tạo thành công dự án "${newProject.name}"! Bạn đã được cấp quyền Project Manager.`
+      `Successfully created project "${newProject.name}"! You have been granted Project Manager permissions.`
     );
     if (onGoToProjectManager) {
       setTimeout(() => {
@@ -332,8 +330,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
 
     if (!canChangeTaskStatus(currentTask)) {
       showErrorModal(
-        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        'Only Project Managers or the assigned member can change task status.',
+        'Access Denied',
         'FORBIDDEN'
       );
       return;
@@ -342,7 +340,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     const isDone = normalizeStatus(currentTask.status) === 'DONE';
     const nextStatus = isDone ? 'IN_PROGRESS' : 'DONE';
 
-    // Cập nhật giao diện tức thì
+    // Optimistic UI update
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
@@ -356,18 +354,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       })
     );
 
-    // Đồng bộ lên backend API
+    // Sync to backend API
     try {
       await TaskService.updateTask(taskId, { status: nextStatus });
     } catch (err: any) {
-      console.warn('Lỗi khi cập nhật trạng thái task lên máy chủ:', err);
-      // Revert lại trạng thái cũ
+      console.warn('Error updating task status on server:', err);
+      // Revert back
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: currentTask.status, progress: currentTask.progress } : t))
       );
       showErrorModal(
-        err.message || 'Không thể cập nhật trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        err.message || 'Unable to update task status.',
+        'Access Denied',
         err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
       );
     }
@@ -379,8 +377,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
 
     if (!canChangeTaskStatus(currentTask)) {
       showErrorModal(
-        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        'Only Project Managers or the assigned member can change task status.',
+        'Access Denied',
         'FORBIDDEN'
       );
       return;
@@ -403,14 +401,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     try {
       await TaskService.updateTask(taskId, { status: newStatus });
     } catch (err: any) {
-      console.warn('Lỗi khi cập nhật trạng thái:', err);
-      // Revert lại trạng thái cũ
+      console.warn('Error updating status:', err);
+      // Revert back
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus, progress: previousProgress } : t))
       );
       showErrorModal(
-        err.message || 'Không thể cập nhật trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        err.message || 'Unable to update task status.',
+        'Access Denied',
         err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
       );
     }
@@ -420,10 +418,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
-    // Yêu cầu có projectId từ dự án đầu tiên của user
     const targetProject = projectsList[0];
     if (!targetProject) {
-      alert('Vui lòng tạo hoặc tham gia dự án trước khi tạo công việc.');
+      alert('Please create or join a project before adding tasks.');
       setIsCreateProjectOpen(true);
       return;
     }
@@ -439,12 +436,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       setTasks((prev) => [newTask, ...prev]);
       setNewTaskTitle('');
     } catch (err: any) {
-      console.error('Lỗi khi tạo công việc mới:', err);
-      alert(err.message || 'Không thể tạo công việc. Vui lòng thử lại!');
+      console.error('Error creating new task:', err);
+      alert(err.message || 'Unable to create task. Please try again!');
     }
   };
 
-  // Lọc công việc theo bộ lọc trạng thái và từ khóa tìm kiếm
+  // Filter tasks by status and search query
   const filteredTasks = tasks.filter((t) => {
     const statusNorm = normalizeStatus(t.status);
     const matchFilter = taskFilter === 'ALL' || statusNorm === taskFilter;
@@ -466,19 +463,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Banner Chào Mừng */}
+      {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 rounded-3xl p-6 sm:p-8 text-white mb-8 shadow-sm relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold">
               <Sparkles size={14} className="text-yellow-300" />
-              <span>Bảng điều khiển Thành viên (User Workspace)</span>
+              <span>Member Workspace</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Xin chào, {user?.name || 'Thành viên'} 👋
+              Welcome, {user?.name || 'Member'} 👋
             </h1>
             <p className="text-emerald-100 text-xs sm:text-sm max-w-xl">
-              Không gian làm việc dành riêng cho thành viên. Theo dõi các nhiệm vụ được giao, cập nhật tiến độ công việc và phối hợp cùng nhóm hiệu quả.
+              Dedicated workspace for team members. Track assigned tasks, update progress, and collaborate seamlessly.
             </p>
           </div>
 
@@ -488,16 +485,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               className="px-4 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
             >
               <FolderPlus size={16} className="text-emerald-600" />
-              <span>Tạo dự án mới</span>
+              <span>New Project</span>
             </button>
             <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center">
-              <div className="text-[11px] text-emerald-100">Vai trò hệ thống</div>
+              <div className="text-[11px] text-emerald-100">System Role</div>
               <div className="text-sm font-bold text-white uppercase tracking-wider">
                 {user?.roleName || 'USER'}
               </div>
             </div>
             <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center">
-              <div className="text-[11px] text-emerald-100">Dự án tham gia</div>
+              <div className="text-[11px] text-emerald-100">Joined Projects</div>
               <div className="text-sm font-bold text-white">{projectsList.length}</div>
             </div>
           </div>
@@ -515,19 +512,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               onClick={() => onGoToProjectManager()}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs shrink-0"
             >
-              <span>Vào trang Quản lý dự án</span>
+              <span>Go to Project Manager</span>
               <ArrowRight size={14} />
             </button>
           )}
         </div>
       )}
 
-      {/* Metric KPI Cards (4 cards tính toán trực tiếp từ dữ liệu thực) */}
+      {/* Metric KPI Cards (Calculated directly from live data) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-2xl sm:text-3xl font-bold text-gray-900">{tasks.length}</div>
-            <div className="text-[11px] text-gray-500 mt-1 font-medium">Tổng nhiệm vụ</div>
+            <div className="text-[11px] text-gray-500 mt-1 font-medium">Total Tasks</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <ListTodo size={20} />
@@ -537,7 +534,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-2xl sm:text-3xl font-bold text-amber-600">{activeTasksCount}</div>
-            <div className="text-[11px] text-gray-500 mt-1 font-medium">Đang thực hiện</div>
+            <div className="text-[11px] text-gray-500 mt-1 font-medium">In Progress</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
             <Clock size={20} />
@@ -547,7 +544,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-2xl sm:text-3xl font-bold text-emerald-600">{doneTasksCount}</div>
-            <div className="text-[11px] text-gray-500 mt-1 font-medium">Đã hoàn thành</div>
+            <div className="text-[11px] text-gray-500 mt-1 font-medium">Completed</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <CheckCircle2 size={20} />
@@ -557,7 +554,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-2xl sm:text-3xl font-bold text-purple-600">{todoTasksCount}</div>
-            <div className="text-[11px] text-gray-500 mt-1 font-medium">Cần xử lý</div>
+            <div className="text-[11px] text-gray-500 mt-1 font-medium">To Do</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
             <Layers size={20} />
@@ -570,7 +567,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         <div className="lg:col-span-3 space-y-4">
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-1">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider px-3 py-2 uppercase">
-              Bảng điều khiển
+              Navigation
             </div>
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -595,7 +592,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
           {/* User Profile Card Summary */}
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-3">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
-              Tài khoản của bạn
+              Your Account
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
@@ -611,34 +608,34 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               </div>
             </div>
             <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex justify-between">
-              <span>Trạng thái:</span>
-              <span className="font-semibold text-emerald-600">Đang hoạt động</span>
+              <span>Status:</span>
+              <span className="font-semibold text-emerald-600">Active</span>
             </div>
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="lg:col-span-9 space-y-6">
-          {/* TAB 1: CÔNG VIỆC CỦA TÔI */}
+          {/* TAB 1: MY TASKS */}
           {activeTab === 'myTasks' && (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Nhiệm vụ của tôi</h2>
+                  <h2 className="text-lg font-bold text-gray-900">My Tasks</h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Quản lý và cập nhật tiến độ các đầu việc được giao.
+                    Manage and update progress for your assigned tasks.
                   </p>
                 </div>
 
-                {/* Filter pills theo Status */}
+                {/* Filter pills by Status */}
                 <div className="flex items-center bg-gray-100/80 p-1 rounded-xl text-xs font-medium overflow-x-auto">
                   {(['ALL', 'TO_DO', 'IN_PROGRESS', 'DONE', 'CLOSED'] as const).map((filter) => {
                     const labels = {
-                      ALL: 'Tất cả',
-                      TO_DO: 'Cần làm',
-                      IN_PROGRESS: 'Đang làm',
-                      DONE: 'Đã xong',
-                      CLOSED: 'Đã đóng',
+                      ALL: 'All',
+                      TO_DO: 'To Do',
+                      IN_PROGRESS: 'In Progress',
+                      DONE: 'Done',
+                      CLOSED: 'Closed',
                     };
                     const isActive = taskFilter === filter;
                     return (
@@ -666,7 +663,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm công việc theo mã (#1), tên..."
+                    placeholder="Search tasks by ID (#1), title..."
                     className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
                   />
                 </div>
@@ -676,14 +673,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     type="text"
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Thêm nhanh nhiệm vụ mới..."
+                    placeholder="Quick add new task..."
                     className="pl-4 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all w-56 text-gray-800"
                   />
                   <button
                     type="submit"
                     className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-all shrink-0 cursor-pointer shadow-xs"
                   >
-                    <Plus size={15} /> Thêm
+                    <Plus size={15} /> Add
                   </button>
                 </form>
               </div>
@@ -692,16 +689,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
               {loadingTasks ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                   <Loader2 size={24} className="animate-spin text-emerald-600" />
-                  <span>Đang tải nhiệm vụ của bạn...</span>
+                  <span>Loading your tasks...</span>
                 </div>
               ) : filteredTasks.length === 0 ? (
                 <div className="py-12 text-center text-xs text-gray-400 space-y-2 border-2 border-dashed border-gray-100 rounded-2xl">
                   <ListTodo size={28} className="mx-auto text-gray-300" />
-                  <p>Không có công việc nào phù hợp trong danh sách.</p>
+                  <p>No tasks found matching your filter.</p>
                   <span className="text-[11px] text-gray-400">
                     {taskFilter !== 'ALL'
-                      ? 'Thử chuyển sang bộ lọc "Tất cả" hoặc tạo công việc mới bên trên.'
-                      : 'Hãy thêm nhanh nhiệm vụ bằng ô nhập bên trên.'}
+                      ? 'Try selecting the "All" filter or add a task above.'
+                      : 'Quick add a task using the input box above.'}
                   </span>
                 </div>
               ) : (
@@ -724,7 +721,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                               type="button"
                               disabled={!canChange}
                               onClick={() => handleToggleTask(task.id)}
-                              title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                              title={!canChange ? 'Only PM or the assignee can change status' : undefined}
                               className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
                                 !canChange ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                               } ${
@@ -741,7 +738,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                 <span
                                   onClick={() => handleOpenTaskDetail(task)}
                                   className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold cursor-pointer transition-colors"
-                                  title="Xem chi tiết nhiệm vụ"
+                                  title="View task details"
                                 >
                                   #{task.id}
                                 </span>
@@ -750,7 +747,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                   className={`text-xs font-medium transition-all truncate cursor-pointer hover:text-emerald-700 ${
                                     isDone ? 'text-gray-400 line-through' : 'text-gray-900'
                                   }`}
-                                  title="Bấm để xem chi tiết"
+                                  title="Click to view details"
                                 >
                                   {task.title}
                                 </p>
@@ -763,7 +760,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                   </span>
                                 )}
                                 <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                                  <Calendar size={11} /> {task.dueDate || 'Hạn chót'}
+                                  <Calendar size={11} /> {task.dueDate || 'Due date'}
                                 </span>
                                 <button
                                   type="button"
@@ -771,7 +768,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                   className="text-[10px] font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 ml-2 cursor-pointer"
                                 >
                                   <ListChecks size={12} />
-                                  <span>Việc phụ (Subtasks)</span>
+                                  <span>Subtasks</span>
                                   {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                                 </button>
                               </div>
@@ -789,16 +786,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                               }`}
                             >
                               {task.priority === 'HIGH'
-                                ? 'Ưu tiên Cao'
+                                ? 'High'
                                 : task.priority === 'MEDIUM'
-                                ? 'Trung bình'
-                                : 'Ưu tiên Thấp'}
+                                ? 'Medium'
+                                : 'Low'}
                             </span>
 
                             <select
                               value={statusNorm}
                               disabled={!canChange}
-                              title={!canChange ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                              title={!canChange ? 'Only PM or the assignee can change status' : undefined}
                               onChange={(e) => handleStatusChange(task.id, e.target.value)}
                               className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none ${
                                 !canChange ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
@@ -812,42 +809,42 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                   : 'bg-amber-50 text-amber-700 border-amber-200'
                               }`}
                             >
-                              <option value="TO_DO">Cần làm (To Do)</option>
-                              <option value="IN_PROGRESS">Đang làm (In Progress)</option>
-                              <option value="DONE">Hoàn thành (Done)</option>
-                              <option value="CLOSED">Đã đóng (Closed)</option>
+                              <option value="TO_DO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="DONE">Done</option>
+                              <option value="CLOSED">Closed</option>
                             </select>
 
-                            {/* Nút Xem chi tiết */}
+                            {/* View Details Button */}
                             <button
                               type="button"
                               onClick={() => handleOpenTaskDetail(task)}
                               className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                              title="Xem chi tiết"
+                              title="View Details"
                             >
                               <Eye size={15} />
                             </button>
 
-                            {/* Nút Sửa Task */}
+                            {/* Edit Task Button */}
                             <button
                               type="button"
                               onClick={() => handleOpenEditTask(task)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                              title="Chỉnh sửa nhiệm vụ"
+                              title="Edit Task"
                             >
                               <Edit3 size={15} />
                             </button>
 
-                            {/* Nút Xóa Task */}
+                            {/* Delete Task Button */}
                             <button
                               type="button"
                               onClick={() => {
-                                if (confirm(`Bạn có chắc muốn xóa công việc "${task.title}"?`)) {
+                                if (confirm(`Are you sure you want to delete task "${task.title}"?`)) {
                                   handleDeleteTask(task.id);
                                 }
                               }}
                               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                              title="Xóa công việc"
+                              title="Delete Task"
                             >
                               <Trash2 size={15} />
                             </button>
@@ -874,15 +871,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             </div>
           )}
 
-          {/* TAB 2: DỰ ÁN THAM GIA */}
+          {/* TAB 2: MY PROJECTS */}
           {activeTab === 'myProjects' && (
             <div className="space-y-4">
               <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Dự án tham gia & Quản lý</h2>
+                    <h2 className="text-lg font-bold text-gray-900">My Projects & Managed</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Danh sách các dự án bạn đang tham gia đóng góp hoặc đóng vai trò Project Manager.
+                      Projects you are contributing to or managing as Project Manager.
                     </p>
                   </div>
                   <button
@@ -890,23 +887,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
                   >
                     <FolderPlus size={15} />
-                    <span>Tạo dự án mới</span>
+                    <span>New Project</span>
                   </button>
                 </div>
 
                 {loadingProjects ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                     <Loader2 size={24} className="animate-spin text-emerald-600" />
-                    <span>Đang tải danh sách dự án...</span>
+                    <span>Loading projects...</span>
                   </div>
                 ) : projectsList.length === 0 ? (
                   <div className="py-12 text-center text-xs text-gray-400 space-y-3 border-2 border-dashed border-gray-100 rounded-2xl">
-                    <p>Bạn chưa tham gia hoặc tạo dự án nào.</p>
+                    <p>You have not joined or created any projects yet.</p>
                     <button
                       onClick={() => setIsCreateProjectOpen(true)}
                       className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold cursor-pointer"
                     >
-                      + Bấm vào đây để tạo dự án đầu tiên
+                      + Click here to create your first project
                     </button>
                   </div>
                 ) : (
@@ -946,7 +943,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                           <div className="space-y-3 pt-3 border-t border-gray-100">
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-500 font-medium">Tiến độ dự án</span>
+                                <span className="text-gray-500 font-medium">Project Progress</span>
                                 <span className="font-bold text-emerald-700">{p.progress}%</span>
                               </div>
                               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -968,7 +965,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                                   }}
                                   className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
                                 >
-                                  <span>Quản lý dự án</span>
+                                  <span>Manage Project</span>
                                   <ArrowRight size={12} />
                                 </button>
                               )}
@@ -983,23 +980,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             </div>
           )}
 
-          {/* TAB 3: HOẠT ĐỘNG GẦN ĐÂY (Dữ liệu thực từ API) */}
+          {/* TAB 3: RECENT ACTIVITIES (Live data from API) */}
           {activeTab === 'activities' && (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <h2 className="text-lg font-bold text-gray-900">Hoạt động gần đây</h2>
+              <h2 className="text-lg font-bold text-gray-900">Recent Activities</h2>
               <p className="text-xs text-gray-500">
-                Nhật ký thao tác và cập nhật trạng thái thực tế từ hệ thống.
+                Audit log of actions and status updates recorded by the system.
               </p>
 
               {loadingActivities ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                   <Loader2 size={24} className="animate-spin text-emerald-600" />
-                  <span>Đang tải hoạt động...</span>
+                  <span>Loading activities...</span>
                 </div>
               ) : activityLogs.length === 0 ? (
                 <div className="py-12 text-center text-xs text-gray-400 space-y-2 border-2 border-dashed border-gray-100 rounded-2xl">
                   <Activity size={24} className="mx-auto text-gray-300" />
-                  <p>Chưa có hoạt động nào được ghi nhận gần đây.</p>
+                  <p>No recent activity recorded.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100 pt-2">
@@ -1025,14 +1022,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         </div>
       </div>
 
-      {/* Modal Tạo Dự Án Mới */}
+      {/* Modal Create Project */}
       <CreateProjectModal
         isOpen={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
         onSuccess={handleProjectCreated}
       />
 
-      {/* Modal Xem Chi Tiết Task / Subtask */}
+      {/* Modal Task / Subtask Details */}
       <TaskDetailModal
         task={selectedDetailTask}
         subtask={selectedDetailSubtask}
@@ -1066,7 +1063,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         }}
       />
 
-      {/* Modal Chỉnh Sửa Task */}
+      {/* Modal Edit Task */}
       <EditTaskModal
         task={editingTask}
         members={editingTask?.projectId ? projectMembers[editingTask.projectId] || [] : []}
@@ -1078,7 +1075,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         onSuccess={handleTaskUpdated}
       />
 
-      {/* Modal Tạo / Chỉnh Sửa Subtask */}
+      {/* Modal Create / Edit Subtask */}
       {subtaskFormTaskId && (
         <SubtaskFormModal
           taskId={subtaskFormTaskId}
@@ -1102,7 +1099,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
         />
       )}
 
-      {/* Modal Thông Báo Lỗi / Từ Chối Quyền */}
+      {/* Modal Error Notification */}
       <ErrorModal
         isOpen={errorModalState.isOpen}
         onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}

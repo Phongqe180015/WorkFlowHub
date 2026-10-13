@@ -5,19 +5,19 @@ export const ViewerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('board');
 
   const sidebarItems = [
-    { id: 'board', label: 'Bảng công việc' },
-    { id: 'activities', label: 'Hoạt động' },
-    { id: 'notifications', label: 'Thông báo' },
+    { id: 'board', label: 'Task Board' },
+    { id: 'activities', label: 'Activities' },
+    { id: 'notifications', label: 'Notifications' },
   ];
 
   // Viewer sprint board tasks (Image 8)
-  const todoList = ['Thiết kế bảng điều khiển', 'Viết tài liệu API', 'Tối ưu truy vấn'];
-  const inProgressList = ['Kết nối Kafka cho thông báo', 'Đánh chỉ số hiệu suất'];
+  const todoList = ['Design Dashboard', 'Write API Docs', 'Optimize Queries'];
+  const inProgressList = ['Connect Kafka for Notifications', 'Benchmark Performance'];
   const doneList = [
-    'Cấu hình CI/CD',
-    'Chuyển đổi sang PostgreSQL',
-    'Sửa lỗi đăng nhập',
-    'Viết test bảo mật',
+    'Configure CI/CD',
+    'Migrate to PostgreSQL',
+    'Fix Login Bug',
+    'Write Security Tests',
   ];
 
   return (
@@ -27,7 +27,7 @@ export const ViewerDashboard: React.FC = () => {
         <div className="lg:col-span-3">
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-1">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider px-3 py-2 uppercase">
-              Người xem
+              Viewer
             </div>
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -57,9 +57,9 @@ export const ViewerDashboard: React.FC = () => {
         <div className="lg:col-span-9 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Bảng công việc</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Task Board</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Giao diện demo cho vai trò <strong className="font-semibold text-gray-700">Người xem</strong> — dữ liệu minh họa, chưa lưu thật.
+              Demo interface for <strong className="font-semibold text-gray-700">Viewer</strong> role — sample data preview.
             </p>
           </div>
 
@@ -67,13 +67,13 @@ export const ViewerDashboard: React.FC = () => {
           <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 flex items-center gap-2.5 text-xs text-emerald-900">
             <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
             <div>
-              <strong className="font-semibold">Chế độ chỉ xem.</strong> Bạn có thể xem bảng, theo dõi hoạt động và nhận thông báo — không thể chỉnh sửa.
+              <strong className="font-semibold">View-only mode.</strong> You can browse boards, track activities, and receive notifications — editing is restricted.
             </div>
           </div>
 
           {/* Kanban Board (Image 8) */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-            <div className="text-sm font-bold text-gray-900">Bảng sprint — Tuần 32</div>
+            <div className="text-sm font-bold text-gray-900">Sprint Board — Week 32</div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* TO-DO Column */}
@@ -91,10 +91,10 @@ export const ViewerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* ĐANG LÀM Column */}
+              {/* IN PROGRESS Column */}
               <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-100 space-y-3">
                 <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
-                  <span>ĐANG LÀM</span>
+                  <span>IN PROGRESS</span>
                   <span className="text-[11px] font-normal text-gray-400">2</span>
                 </div>
                 <div className="space-y-2">
@@ -106,10 +106,10 @@ export const ViewerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* XONG Column */}
+              {/* DONE Column */}
               <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-100 space-y-3">
                 <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-                  <span>XONG</span>
+                  <span>DONE</span>
                   <span className="text-[11px] font-normal text-gray-400">4</span>
                 </div>
                 <div className="space-y-2">
@@ -123,11 +123,11 @@ export const ViewerDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom Grid: Hoạt động gần đây + Thông báo (Image 8) */}
+          {/* Bottom Grid: Recent Activities + Notifications */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Hoạt động gần đây */}
+            {/* Recent Activities */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Hoạt động gần đây</h3>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Recent Activities</h3>
 
               <div className="space-y-3.5">
                 {mockActivityLogs.map((log) => (
@@ -141,10 +141,10 @@ export const ViewerDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Thông báo */}
+            {/* Notifications */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4 flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Thông báo</h3>
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Notifications</h3>
 
                 <div className="space-y-2.5">
                   {mockNotifications.map((notif) => (
@@ -163,7 +163,7 @@ export const ViewerDashboard: React.FC = () => {
 
               <div className="pt-3 border-t border-gray-100">
                 <span className="inline-block px-3 py-1 bg-gray-100 text-gray-500 rounded-md text-[11px] font-medium">
-                  Bạn không có quyền chỉnh sửa
+                  You do not have edit permissions
                 </span>
               </div>
             </div>
