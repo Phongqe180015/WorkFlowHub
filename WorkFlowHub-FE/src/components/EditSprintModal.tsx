@@ -50,19 +50,19 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasPMRole) {
-      setError('Từ chối thao tác: Chỉ có vai trò Project Manager (PM) mới được quyền chỉnh sửa Sprint.');
+      setError('Permission denied: Only members with the Project Manager (PM) role can edit this Sprint.');
       return;
     }
     if (!name.trim()) {
-      setError('Vui lòng nhập tên Sprint');
+      setError('Please enter a Sprint name');
       return;
     }
     if (!startDate || !endDate) {
-      setError('Vui lòng chọn ngày bắt đầu và kết thúc');
+      setError('Please select both start and end dates');
       return;
     }
     if (new Date(startDate) > new Date(endDate)) {
-      setError('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu');
+      setError('End date must be on or after start date');
       return;
     }
 
@@ -83,8 +83,8 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
       onSuccess(updated);
       onClose();
     } catch (err: any) {
-      console.error('Lỗi khi cập nhật sprint:', err);
-      setError(err.message || 'Không thể cập nhật Sprint. Vui lòng thử lại!');
+      console.error('Error updating sprint:', err);
+      setError(err.message || 'Could not update Sprint. Please try again!');
       setLoading(false);
     }
   };
@@ -105,9 +105,9 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
             <Edit3 size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Chỉnh sửa Sprint</h2>
+            <h2 className="text-xl font-bold text-gray-900">Edit Sprint</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Cập nhật thông tin, thời hạn hoặc trạng thái chu kỳ làm việc
+              Update information, schedule, or iteration cycle status
             </p>
           </div>
         </div>
@@ -115,7 +115,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
         {!hasPMRole && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center gap-2">
             <ShieldAlert size={16} className="shrink-0 text-amber-600" />
-            <span>Quyền bị giới hạn: Chỉ thành viên có vai trò <strong>Project Manager (PM)</strong> mới được chỉnh sửa thông tin Sprint này.</span>
+            <span>Restricted Access: Only members with the <strong>Project Manager (PM)</strong> role can edit this Sprint.</span>
           </div>
         )}
 
@@ -129,14 +129,14 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Tên Sprint <span className="text-red-500">*</span>
+              Sprint Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Sprint 1 - Thiết kế tính năng & Database"
+              placeholder="e.g. Sprint 1 - Core Architecture & Database"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-800"
               disabled={loading}
             />
@@ -144,13 +144,13 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Mục tiêu Sprint
+              Sprint Goal
             </label>
             <textarea
               rows={2}
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="Mục tiêu cốt lõi mà đội ngũ cần đạt được trong đợt này..."
+              placeholder="Primary milestone the team aims to deliver this cycle..."
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-800 resize-none"
               disabled={loading}
             />
@@ -160,7 +160,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Calendar size={13} className="text-gray-400" />
-                <span>Ngày bắt đầu</span>
+                <span>Start Date</span>
               </label>
               <input
                 type="date"
@@ -174,7 +174,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1">
                 <Calendar size={13} className="text-gray-400" />
-                <span>Ngày kết thúc</span>
+                <span>End Date</span>
               </label>
               <input
                 type="date"
@@ -189,7 +189,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Trạng thái Sprint
+              Sprint Status
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -201,7 +201,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
                     : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Lên kế hoạch
+                Planned
               </button>
               <button
                 type="button"
@@ -212,7 +212,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
                     : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Đang chạy
+                Active
               </button>
               <button
                 type="button"
@@ -223,7 +223,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
                     : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Hoàn thành
+                Completed
               </button>
             </div>
           </div>
@@ -235,7 +235,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
               disabled={loading}
               className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -243,7 +243,7 @@ export const EditSprintModal: React.FC<EditSprintModalProps> = ({
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-60"
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
-              <span>{hasPMRole ? 'Lưu thay đổi' : 'Không có quyền PM'}</span>
+              <span>{hasPMRole ? 'Save Changes' : 'No PM Permission'}</span>
             </button>
           </div>
         </form>

@@ -175,7 +175,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     message: '',
   });
 
-  const showErrorModal = (message: string, title: string = 'Thông báo lỗi', code?: string) => {
+  const showErrorModal = (message: string, title: string = 'Error Notice', code?: string) => {
     setErrorModalState({
       isOpen: true,
       title,
@@ -185,16 +185,16 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
   };
 
   const sidebarItems = [
-    { id: 'sprints', label: 'Quản lý Sprint', icon: Layers },
-    { id: 'members', label: 'Thành viên & Phân quyền', icon: Users },
-    { id: 'currentSprint', label: 'Sprint hiện tại & Burndown', icon: Sparkles },
-    { id: 'assignments', label: 'Phân công công việc', icon: FolderKanban },
-    { id: 'trash', label: 'Thùng rác công việc', icon: Trash2, badge: trashTasks.length },
+    { id: 'sprints', label: 'Sprint Management', icon: Layers },
+    { id: 'members', label: 'Members & Permissions', icon: Users },
+    { id: 'currentSprint', label: 'Active Sprint & Burndown', icon: Sparkles },
+    { id: 'assignments', label: 'Task Assignments', icon: FolderKanban },
+    { id: 'trash', label: 'Task Trash Bin', icon: Trash2, badge: trashTasks.length },
   ];
 
   const currentProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
 
-  // Kiểm tra quyền PM: chỉ role PM mới được edit sprint hoặc tạo sprint
+  // Check PM permissions
   const isPM = Boolean(
     (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
     currentRole === 'PROJECT_MANAGER' ||
@@ -202,14 +202,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     members.some((m) => m.userId === user?.id && (m.roleName || '').toUpperCase() === 'PROJECT_MANAGER')
   );
 
-  // Đồng bộ khi initialProjectId thay đổi từ bên ngoài
+  // Sync when initialProjectId changes
   useEffect(() => {
     if (initialProjectId) {
       setSelectedProjectId(initialProjectId);
     }
   }, [initialProjectId]);
 
-  // 1. Tải danh sách các dự án
+  // 1. Load projects list
   useEffect(() => {
     loadProjects();
   }, [user?.id]);
@@ -233,7 +233,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         setSelectedProjectId(null);
       }
     } catch (err) {
-      console.warn('Lỗi tải danh sách dự án từ máy chủ:', err);
+      console.warn('Error loading projects from server:', err);
       setProjects([]);
       setSelectedProjectId(null);
     } finally {
@@ -241,11 +241,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     }
   };
 
-  // 2. Tải Sprints, Members và Tasks thực tế khi chọn dự án
+  // 2. Load Sprints, Members, and Tasks for selected project
   useEffect(() => {
     if (selectedProjectId) {
       loadProjectDetails(selectedProjectId);
-      setSelectedSprintForTasks(null); // Reset sprint đã chọn khi đổi project
+      setSelectedSprintForTasks(null);
     } else {
       setSprints([]);
       setMembers([]);
@@ -269,7 +269,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       setTasks(fetchedTasks || []);
       setTrashTasks(fetchedTrash || []);
     } catch (err) {
-      console.warn('Lỗi tải chi tiết dự án:', err);
+      console.warn('Error loading project details:', err);
       setSprints([]);
       setMembers([]);
       setTasks([]);
@@ -286,7 +286,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       const fetchedTrash = await TaskService.getTrashTasks(selectedProjectId);
       setTrashTasks(fetchedTrash || []);
     } catch (err) {
-      console.warn('Lỗi tải thùng rác:', err);
+      console.warn('Error loading trash bin:', err);
     } finally {
       setLoadingTrash(false);
     }
@@ -294,7 +294,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   const handleSprintCreated = (newSprint: Sprint) => {
     setSprints((prev) => [newSprint, ...prev]);
-    showNotification('success', `Đã tạo thành công "${newSprint.name}"!`);
+    showNotification('success', `Successfully created sprint "${newSprint.name}"!`);
   };
 
   const handleSprintUpdated = (updatedSprint: Sprint) => {
@@ -302,15 +302,15 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     if (selectedSprintForTasks && selectedSprintForTasks.id === updatedSprint.id) {
       setSelectedSprintForTasks(updatedSprint);
     }
-    showNotification('success', `Đã cập nhật sprint "${updatedSprint.name}" thành công!`);
+    showNotification('success', `Successfully updated sprint "${updatedSprint.name}"!`);
   };
 
   const handleDeleteSprint = async (sprint: Sprint) => {
     if (!isPM) {
-      alert('Chỉ có vai trò Project Manager (PM) mới được phép xóa Sprint.');
+      alert('Only users with Project Manager (PM) role are allowed to delete sprints.');
       return;
     }
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa Sprint "${sprint.name}" không?`)) {
+    if (!window.confirm(`Are you sure you want to delete Sprint "${sprint.name}"?`)) {
       return;
     }
     try {
@@ -319,16 +319,16 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       if (selectedSprintForTasks?.id === sprint.id) {
         setSelectedSprintForTasks(null);
       }
-      showNotification('success', `Đã xóa sprint "${sprint.name}" thành công!`);
+      showNotification('success', `Successfully deleted sprint "${sprint.name}"!`);
     } catch (err: any) {
-      console.error('Lỗi khi xóa sprint:', err);
-      showNotification('error', err.message || 'Không thể xóa sprint.');
+      console.error('Error deleting sprint:', err);
+      showNotification('error', err.message || 'Unable to delete sprint.');
     }
   };
 
   const handleTaskCreated = (newTask: Task) => {
     setTasks((prev) => [newTask, ...prev]);
-    showNotification('success', `Đã giao việc "${newTask.title}" thành công!`);
+    showNotification('success', `Successfully created task "${newTask.title}"!`);
   };
 
   const canChangeTaskStatus = (task: Task) => {
@@ -344,8 +344,8 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     const targetTask = tasks.find((t) => t.id === taskId);
     if (targetTask && !canChangeTaskStatus(targetTask)) {
       showErrorModal(
-        'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        'Only Project Managers or the assigned member can change task status.',
+        'Access Denied',
         'FORBIDDEN'
       );
       return;
@@ -353,26 +353,26 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     try {
       await TaskService.updateTask(taskId, { status: newStatus });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
-      showNotification('success', 'Đã cập nhật trạng thái công việc!');
+      showNotification('success', 'Task status updated successfully!');
     } catch (err: any) {
-      console.error('Lỗi khi cập nhật trạng thái task:', err);
-      // Đảm bảo UI giữ nguyên trạng thái cũ
+      console.error('Error updating task status:', err);
+      // Keep previous UI state
       setTasks((prev) => [...prev]);
       showErrorModal(
-        err.message || 'Chỉ Project Manager hoặc người được giao việc mới có quyền thay đổi trạng thái công việc.',
-        'Từ chối quyền truy cập',
+        err.message || 'Only Project Managers or the assigned member can change task status.',
+        'Access Denied',
         err.code || (err.status === 403 ? 'FORBIDDEN' : 'ERROR')
       );
-      showNotification('error', err.message || 'Không thể cập nhật trạng thái.');
+      showNotification('error', err.message || 'Unable to update status.');
     }
   };
 
   const handleDeleteTask = async (taskId: number, taskTitle?: string) => {
     if (!isPM) {
-      showErrorModal('Chỉ có Project Manager (PM) mới có quyền xóa công việc.', 'Từ chối quyền truy cập', 'FORBIDDEN');
+      showErrorModal('Only Project Managers (PM) have permission to delete tasks.', 'Access Denied', 'FORBIDDEN');
       return;
     }
-    if (!window.confirm(`Bạn có chắc muốn chuyển công việc "${taskTitle || 'này'}" vào thùng rác không?`)) {
+    if (!window.confirm(`Are you sure you want to move task "${taskTitle || 'this task'}" to trash?`)) {
       return;
     }
     try {
@@ -384,11 +384,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       } else {
         loadTrashTasks();
       }
-      showNotification('success', 'Đã chuyển công việc vào thùng rác (xóa mềm)!');
+      showNotification('success', 'Task moved to trash!');
     } catch (err: any) {
-      console.error('Lỗi khi xóa công việc:', err);
-      showErrorModal(err.message || 'Không thể xóa công việc.', 'Lỗi thao tác', err.code);
-      showNotification('error', err.message || 'Không thể xóa công việc.');
+      console.error('Error deleting task:', err);
+      showErrorModal(err.message || 'Unable to delete task.', 'Operation Error', err.code);
+      showNotification('error', err.message || 'Unable to delete task.');
     }
   };
 
@@ -402,59 +402,59 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       } else if (selectedProjectId) {
         loadProjectDetails(selectedProjectId);
       }
-      showNotification('success', 'Đã khôi phục công việc thành công!');
+      showNotification('success', 'Task restored successfully!');
     } catch (err: any) {
-      console.error('Lỗi khi khôi phục task:', err);
-      showNotification('error', err.message || 'Không thể khôi phục công việc.');
+      console.error('Error restoring task:', err);
+      showNotification('error', err.message || 'Unable to restore task.');
     }
   };
 
   const handlePermanentDeleteTask = async (taskId: number, taskTitle?: string) => {
     if (!isPM) {
-      alert('Chỉ có Project Manager (PM) mới có quyền xóa vĩnh viễn công việc.');
+      alert('Only Project Managers (PM) have permission to permanently delete tasks.');
       return;
     }
-    if (!window.confirm(`Hành động này KHÔNG THỂ hoàn tác. Bạn có chắc muốn xóa vĩnh viễn công việc "${taskTitle || 'này'}" không?`)) {
+    if (!window.confirm(`This action CANNOT be undone. Are you sure you want to permanently delete task "${taskTitle || 'this task'}"?`)) {
       return;
     }
     try {
       await TaskService.permanentDeleteTask(taskId);
       setTrashTasks((prev) => prev.filter((t) => t.id !== taskId));
-      showNotification('success', 'Đã xóa vĩnh viễn công việc khỏi hệ thống!');
+      showNotification('success', 'Task permanently deleted!');
     } catch (err: any) {
-      console.error('Lỗi khi xóa vĩnh viễn công việc:', err);
-      showNotification('error', err.message || 'Không thể xóa vĩnh viễn công việc.');
+      console.error('Error permanently deleting task:', err);
+      showNotification('error', err.message || 'Unable to permanently delete task.');
     }
   };
 
   const handleMemberAdded = (newMember: ProjectMember) => {
     setMembers((prev) => [newMember, ...prev]);
-    showNotification('success', `Đã thêm thành viên "${newMember.userName || 'Mới'}" với vai trò ${newMember.roleName || 'thành viên'}!`);
+    showNotification('success', `Added member "${newMember.userName || 'New'}" with role ${newMember.roleName || 'Member'}!`);
   };
 
   const handleProjectCreated = (newProject: Project) => {
     setProjects((prev) => [newProject, ...prev]);
     setSelectedProjectId(newProject.id);
-    showNotification('success', `Đã tạo thành công dự án "${newProject.name}"! Bạn là Project Manager của dự án này.`);
+    showNotification('success', `Successfully created project "${newProject.name}"! You are the Project Manager of this project.`);
   };
 
   const handleRemoveMember = async (userId: number, userName?: string) => {
     if (!selectedProjectId) return;
     if (userId === user?.id) {
-      alert('Bạn là người tạo dự án (Project Manager), không thể tự xóa chính mình.');
+      alert('You are the project creator (Project Manager) and cannot remove yourself.');
       return;
     }
-    if (!window.confirm(`Bạn có chắc muốn xóa thành viên "${userName || 'này'}" khỏi dự án?`)) {
+    if (!window.confirm(`Are you sure you want to remove member "${userName || 'this member'}" from the project?`)) {
       return;
     }
 
     try {
       await ProjectMemberService.removeMember(selectedProjectId, userId);
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
-      showNotification('success', `Đã xóa thành viên khỏi dự án.`);
+      showNotification('success', `Member removed from project.`);
     } catch (err: any) {
-      console.error('Lỗi khi xóa thành viên:', err);
-      showNotification('error', err.message || 'Không thể xóa thành viên.');
+      console.error('Error removing member:', err);
+      showNotification('error', err.message || 'Unable to remove member.');
     }
   };
 
@@ -569,10 +569,10 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     ? Math.round((currentSprintDoneTasks.length / currentSprintTotalTasks) * 100)
     : (currentSprint?.status === 'COMPLETED' ? 100 : 0);
 
-  // Tính số ngày và hạn chót thực tế
+  // Calculate duration and remaining days
   let sprintDurationDays = 0;
-  let sprintDurationText = 'Chưa đặt lịch';
-  let daysRemainingText = 'Không thời hạn';
+  let sprintDurationText = 'No schedule set';
+  let daysRemainingText = 'No deadline';
   let daysRemainingCount: number | null = null;
   let isSprintOverdue = false;
   let elapsedDays = 1;
@@ -588,7 +588,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       end.setHours(0, 0, 0, 0);
 
       sprintDurationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1);
-      sprintDurationText = `${sprintDurationDays} ngày (${start.toLocaleDateString('vi-VN')} - ${end.toLocaleDateString('vi-VN')})`;
+      sprintDurationText = `${sprintDurationDays} days (${start.toLocaleDateString('en-US')} - ${end.toLocaleDateString('en-US')})`;
 
       if (today < start) {
         elapsedDays = 0;
@@ -598,7 +598,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     }
 
     if (currentSprint.status === 'COMPLETED') {
-      daysRemainingText = 'Đã hoàn thành';
+      daysRemainingText = 'Completed';
     } else if (currentSprint.endDate) {
       const end = new Date(currentSprint.endDate);
       end.setHours(0, 0, 0, 0);
@@ -606,16 +606,16 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
       if (daysRemainingCount < 0) {
         isSprintOverdue = true;
-        daysRemainingText = `Quá hạn ${Math.abs(daysRemainingCount)} ngày`;
+        daysRemainingText = `Overdue by ${Math.abs(daysRemainingCount)} days`;
       } else if (daysRemainingCount === 0) {
-        daysRemainingText = 'Hôm nay kết thúc';
+        daysRemainingText = 'Ends today';
       } else {
-        daysRemainingText = `${daysRemainingCount} ngày còn lại`;
+        daysRemainingText = `${daysRemainingCount} days remaining`;
       }
     }
   }
 
-  // Dữ liệu Burndown chart động từ số liệu thực
+  // Dynamic Burndown chart data
   const burndownChartBars = useMemo(() => {
     if (!currentSprint || currentSprintTotalTasks === 0) return [];
     
@@ -685,20 +685,20 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             {isPM ? (
               <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-purple-50 text-purple-700 border border-purple-100 flex items-center gap-1">
                 <ShieldCheck size={12} />
-                <span>Quyền: Project Manager (Có quyền chỉnh sửa Sprint)</span>
+                <span>Role: Project Manager (Full Sprint permissions)</span>
               </span>
             ) : (
               <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
                 <Lock size={12} />
-                <span>Quyền: Thành viên (Chỉ xem Sprint)</span>
+                <span>Role: Member (View only)</span>
               </span>
             )}
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            {currentProject?.name || 'Dự án của bạn'}
+            {currentProject?.name || 'Your Project'}
           </h1>
           <p className="text-xs text-gray-500 max-w-xl">
-            {currentProject?.description || 'Quản lý sprint, điều phối thành viên và giám sát tiến độ dự án.'}
+            {currentProject?.description || 'Manage sprints, coordinate team members, and monitor project velocity.'}
           </p>
         </div>
 
@@ -707,7 +707,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
           {loadingProjects && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <Loader2 size={14} className="animate-spin text-emerald-600" />
-              <span>Đang tải dự án...</span>
+              <span>Loading projects...</span>
             </div>
           )}
           {projects.length > 1 && (
@@ -729,7 +729,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200"
           >
             <FolderPlus size={15} />
-            <span>Tạo dự án mới</span>
+            <span>New Project</span>
           </button>
 
           {onSwitchToUserView && (
@@ -738,7 +738,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
               className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <ArrowLeft size={14} />
-              <span>Về Workspace Thành viên</span>
+              <span>Back to Member Workspace</span>
             </button>
           )}
         </div>
@@ -749,7 +749,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         <div className="lg:col-span-3 space-y-4">
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-1">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider px-3 py-2 uppercase">
-              Quản trị Sprint & Nhân sự
+              Sprint & Team Management
             </div>
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -786,23 +786,23 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
           {/* Quick Metrics Card */}
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-3">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
-              Tổng quan dự án
+              Project Overview
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Tổng Sprint:</span>
+                <span className="text-gray-500">Total Sprints:</span>
                 <span className="font-bold text-gray-900">{sprints.length}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Thành viên:</span>
+                <span className="text-gray-500">Members:</span>
                 <span className="font-bold text-gray-900">{members.length}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Tổng công việc:</span>
+                <span className="text-gray-500">Total Tasks:</span>
                 <span className="font-bold text-gray-900">{tasks.length}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-500">Vai trò của bạn:</span>
+                <span className="text-gray-500">Your Role:</span>
                 <span className={`font-bold ${isPM ? 'text-purple-600' : 'text-emerald-600'}`}>
                   {isPM ? 'Project Manager' : 'Member'}
                 </span>
@@ -813,10 +813,10 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
         {/* Main Content Area */}
         <div className="lg:col-span-9 space-y-6">
-          {/* TAB 1: QUẢN LÝ SPRINT */}
+          {/* TAB 1: SPRINT MANAGEMENT */}
           {activeTab === 'sprints' && (
             <div className="space-y-6">
-              {/* NẾU ĐÃ CHỌN 1 SPRINT CỤ THỂ: HIỂN THỊ TẤT CẢ TASK TRONG SPRINT ĐÓ + FILTER MÃ TASK */}
+              {/* IF SPECIFIC SPRINT SELECTED: DISPLAY ALL SPRINT TASKS + TASK CODE FILTER */}
               {selectedSprintForTasks ? (
                 <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6 animate-in fade-in">
                   {/* Sprint Detail Header */}
@@ -827,7 +827,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer mb-1"
                       >
                         <ArrowLeft size={14} />
-                        <span>Quay lại danh sách Sprint</span>
+                        <span>Back to Sprint List</span>
                       </button>
 
                       <div className="flex items-center gap-2.5 flex-wrap">
@@ -844,15 +844,15 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           }`}
                         >
                           {selectedSprintForTasks.status === 'ACTIVE'
-                            ? 'Đang chạy'
+                            ? 'Active'
                             : selectedSprintForTasks.status === 'COMPLETED'
-                            ? 'Đã xong'
-                            : 'Kế hoạch'}
+                            ? 'Completed'
+                            : 'Planned'}
                         </span>
                       </div>
 
                       <p className="text-xs text-gray-500 max-w-xl">
-                        {selectedSprintForTasks.goal || 'Mục tiêu: Chưa có ghi chú mục tiêu cụ thể'}
+                        {selectedSprintForTasks.goal || 'Goal: No specific goal notes provided'}
                       </p>
 
                       <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
@@ -862,7 +862,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         </span>
                         <span>•</span>
                         <span>
-                          Tổng: <strong className="text-gray-700">{sprintTasks.length} tasks</strong>
+                          Total: <strong className="text-gray-700">{sprintTasks.length} tasks</strong>
                         </span>
                       </div>
                     </div>
@@ -876,18 +876,18 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             setIsEditSprintOpen(true);
                           }}
                           className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-blue-200"
-                          title="Chỉnh sửa Sprint (Chỉ PM)"
+                          title="Edit Sprint (PM Only)"
                         >
                           <Edit3 size={14} />
-                          <span>Chỉnh sửa Sprint</span>
+                          <span>Edit Sprint</span>
                         </button>
                       ) : (
                         <div
                           className="px-3 py-2 bg-gray-50 text-gray-400 rounded-xl text-xs font-medium flex items-center gap-1.5 cursor-not-allowed border border-gray-200"
-                          title="Chỉ có role PM mới được edit sprint"
+                          title="Only PMs can edit sprints"
                         >
                           <Lock size={13} />
-                          <span>Chỉ PM mới được sửa</span>
+                          <span>PM Only</span>
                         </div>
                       )}
 
@@ -899,70 +899,70 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <Plus size={15} />
-                        <span>Thêm Task vào Sprint</span>
+                        <span>Add Task to Sprint</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Filter Bar: Tìm theo mã Task, Thành viên, Trạng thái (Requirement 3 & 5) */}
+                  {/* Filter Bar: Task ID, Member, Status */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 p-4 bg-gray-50/70 rounded-2xl border border-gray-100">
-                    {/* Filter theo mã task / tên task */}
+                    {/* Filter by task ID / task title */}
                     <div className="sm:col-span-5 relative">
                       <Search size={15} className="absolute left-3.5 top-2.5 text-gray-400" />
                       <input
                         type="text"
                         value={sprintTaskSearch}
                         onChange={(e) => setSprintTaskSearch(e.target.value)}
-                        placeholder="Lọc theo mã task (VD: #1, TASK-1) hoặc tên..."
+                        placeholder="Filter by task ID (e.g., #1, TASK-1) or title..."
                         className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-800"
                       />
                     </div>
 
-                    {/* Filter theo thành viên */}
+                    {/* Filter by member */}
                     <div className="sm:col-span-4">
                       <select
                         value={sprintMemberFilter}
                         onChange={(e) => setSprintMemberFilter(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                       >
-                        <option value="ALL">Tất cả thành viên</option>
+                        <option value="ALL">All Members</option>
                         {members.map((m) => (
                           <option key={m.userId} value={m.userId}>
                             {m.userName || `User #${m.userId}`} ({m.roleName || 'Member'})
                           </option>
                         ))}
-                        <option value="UNASSIGNED">Chưa phân công</option>
+                        <option value="UNASSIGNED">Unassigned</option>
                       </select>
                     </div>
 
-                    {/* Filter theo trạng thái */}
+                    {/* Filter by status */}
                     <div className="sm:col-span-3">
                       <select
                         value={sprintStatusFilter}
                         onChange={(e) => setSprintStatusFilter(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                       >
-                        <option value="ALL">Tất cả trạng thái</option>
-                        <option value="TO_DO">Cần làm (To Do)</option>
-                        <option value="IN_PROGRESS">Đang làm (In Progress)</option>
-                        <option value="DONE">Hoàn thành (Done)</option>
-                        <option value="CLOSED">Đã đóng (Closed)</option>
+                        <option value="ALL">All Statuses</option>
+                        <option value="TO_DO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="DONE">Done</option>
+                        <option value="CLOSED">Closed</option>
                       </select>
                     </div>
                   </div>
 
-                  {/* Tasks List của Sprint */}
+                  {/* Sprint Tasks List */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs text-gray-500 px-1">
                       <span>
-                        Hiển thị <strong>{filteredSprintTasks.length}</strong> / {sprintTasks.length} công việc
+                        Showing <strong>{filteredSprintTasks.length}</strong> / {sprintTasks.length} tasks
                       </span>
                       {sprintTaskSearch && (
                         <button
                           onClick={() => setSprintTaskSearch('')}
                           className="text-emerald-700 hover:underline cursor-pointer"
                         >
-                          Xóa bộ lọc mã task
+                          Clear filter
                         </button>
                       )}
                     </div>
@@ -972,8 +972,8 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         <Layers size={28} className="mx-auto text-gray-300" />
                         <p>
                           {sprintTasks.length === 0
-                            ? 'Sprint này hiện chưa có công việc nào.'
-                            : 'Không tìm thấy công việc nào khớp với mã task hoặc bộ lọc đã chọn.'}
+                            ? 'There are currently no tasks in this sprint.'
+                            : 'No tasks found matching the selected filters.'}
                         </p>
                         <button
                           onClick={() => {
@@ -982,7 +982,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           }}
                           className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold cursor-pointer"
                         >
-                          + Giao việc vào Sprint này
+                          + Assign Task to Sprint
                         </button>
                       </div>
                     ) : (
@@ -1002,11 +1002,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="min-w-0 space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    {/* MÃ TASK */}
+                                    {/* Task ID */}
                                     <span
                                       onClick={() => handleOpenTaskDetail(task)}
                                       className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer transition-colors"
-                                      title="Xem chi tiết nhiệm vụ"
+                                      title="View task details"
                                     >
                                       #{task.id}
                                     </span>
@@ -1014,7 +1014,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                     <span
                                       onClick={() => handleOpenTaskDetail(task)}
                                       className={`text-xs font-bold cursor-pointer hover:text-emerald-700 transition-colors ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}
-                                      title="Bấm để xem chi tiết"
+                                      title="Click to view details"
                                     >
                                       {task.title}
                                     </span>
@@ -1042,25 +1042,25 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                     {task.dueDate && (
                                       <span className="flex items-center gap-1">
                                         <Calendar size={12} />
-                                        Hạn: {task.dueDate}
+                                        Due: {task.dueDate}
                                       </span>
                                     )}
 
-                                    {/* Nút bật/tắt công việc phụ (Subtask) - Requirement 4 */}
+                                    {/* Toggle Subtasks */}
                                     <button
                                       type="button"
                                       onClick={() => toggleTaskSubtasks(task.id)}
                                       className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
                                     >
                                       <ListChecks size={13} />
-                                      <span>Việc phụ (Subtasks)</span>
+                                      <span>Subtasks</span>
                                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                                     </button>
                                   </div>
                                 </div>
 
                                 <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                                  {/* Người được giao */}
+                                  {/* Assignee */}
                                   {assignee || task.assigneeName ? (
                                     <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-xl text-xs">
                                       <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
@@ -1071,21 +1071,21 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                           {task.assigneeName || assignee?.userName}
                                         </div>
                                         <div className="text-[9px] text-gray-400 leading-tight">
-                                          {assignee?.roleName || 'Thành viên'}
+                                          {assignee?.roleName || 'Member'}
                                         </div>
                                       </div>
                                     </div>
                                   ) : (
                                     <span className="px-2.5 py-1 text-[11px] rounded-lg bg-gray-100 text-gray-500 italic">
-                                      Chưa gán
+                                      Unassigned
                                     </span>
                                   )}
 
-                                  {/* Trạng thái công việc */}
+                                  {/* Task Status */}
                                   <select
                                     value={task.status}
                                     disabled={!canChangeTaskStatus(task)}
-                                    title={!canChangeTaskStatus(task) ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                                    title={!canChangeTaskStatus(task) ? 'Only PM or the assignee can change task status' : undefined}
                                     onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value)}
                                     className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:outline-none ${
                                       !canChangeTaskStatus(task) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
@@ -1099,38 +1099,38 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                         : 'bg-amber-50 text-amber-700 border-amber-200'
                                     }`}
                                   >
-                                    <option value="TO_DO">Cần làm</option>
-                                    <option value="IN_PROGRESS">Đang làm</option>
-                                    <option value="DONE">Hoàn thành</option>
-                                    <option value="CLOSED">Đã đóng (Closed)</option>
+                                    <option value="TO_DO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="DONE">Done</option>
+                                    <option value="CLOSED">Closed</option>
                                   </select>
 
-                                  {/* Xem chi tiết */}
+                                  {/* View Detail */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenTaskDetail(task)}
                                     className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Xem chi tiết nhiệm vụ"
+                                    title="View task details"
                                   >
                                     <Eye size={15} />
                                   </button>
 
-                                  {/* Chỉnh sửa */}
+                                  {/* Edit Task */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEditTask(task)}
                                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Chỉnh sửa nhiệm vụ"
+                                    title="Edit task"
                                   >
                                     <Edit3 size={15} />
                                   </button>
 
-                                  {/* Nút xóa task: CHỈ PM MỚI CÓ QUYỀN XÓA (Thành viên không được xóa, chỉ chuyển status sang CLOSED) */}
+                                  {/* Delete Task (PM Only) */}
                                   {isPM && (
                                     <button
                                       onClick={() => handleDeleteTask(task.id, task.title)}
                                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Chuyển vào thùng rác (Chỉ PM)"
+                                      title="Move to trash (PM only)"
                                     >
                                       <Trash2 size={15} />
                                     </button>
@@ -1138,7 +1138,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                 </div>
                               </div>
 
-                              {/* Khu vực tạo và quản lý Subtasks (Requirement 4) */}
+                              {/* Subtasks area */}
                               {isExpanded && (
                                 <div className="pt-2 pl-4 animate-in fade-in">
                                   <SubtaskList
@@ -1157,13 +1157,13 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                   </div>
                 </div>
               ) : (
-                /* DANH SÁCH TỔNG QUAN CÁC SPRINT */
+                /* SPRINT LIST OVERVIEW */
                 <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">Danh sách Sprint</h2>
+                      <h2 className="text-lg font-bold text-gray-900">Sprint List</h2>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Lập kế hoạch và theo dõi các chu kỳ phát triển. Bấm vào Sprint để xem chi tiết danh sách công việc.
+                        Plan and track development cycles. Click on a Sprint to view its tasks.
                       </p>
                     </div>
 
@@ -1174,15 +1174,15 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
                         >
                           <Plus size={16} />
-                          <span>Tạo Sprint mới</span>
+                          <span>Create New Sprint</span>
                         </button>
                       ) : (
                         <div
                           className="px-3.5 py-2 bg-gray-50 text-gray-400 rounded-xl text-xs font-medium flex items-center gap-1.5 cursor-not-allowed border border-gray-200 shrink-0"
-                          title="Chỉ có role PM mới được tạo sprint"
+                          title="Only PM can create sprints"
                         >
                           <Lock size={14} />
-                          <span>Chỉ PM mới được tạo Sprint</span>
+                          <span>PM Only</span>
                         </div>
                       )
                     )}
@@ -1191,17 +1191,17 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                   {loadingDetails ? (
                     <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                       <Loader2 size={24} className="animate-spin text-emerald-600" />
-                      <span>Đang tải danh sách sprint...</span>
+                      <span>Loading sprint list...</span>
                     </div>
                   ) : sprints.length === 0 ? (
                     <div className="py-12 text-center text-xs text-gray-400 space-y-3 border-2 border-dashed border-gray-100 rounded-2xl">
-                      <p>Chưa có sprint nào được tạo cho dự án này.</p>
+                      <p>No sprints have been created for this project yet.</p>
                       {isPM && (
                         <button
                           onClick={() => setIsCreateSprintOpen(true)}
                           className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold cursor-pointer"
                         >
-                          + Bấm vào đây để tạo sprint đầu tiên
+                          + Click here to create the first sprint
                         </button>
                       )}
                     </div>
@@ -1225,7 +1225,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                     {sprint.name}
                                   </h3>
                                   <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                    {sprint.goal || 'Chưa ghi chú mục tiêu cụ thể'}
+                                    {sprint.goal || 'No specific goal provided'}
                                   </p>
                                 </div>
                                 <span
@@ -1237,7 +1237,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                       : 'bg-blue-50 text-blue-700 border border-blue-100'
                                   }`}
                                 >
-                                  {isActive ? 'Đang chạy' : isCompleted ? 'Đã xong' : 'Kế hoạch'}
+                                  {isActive ? 'Active' : isCompleted ? 'Completed' : 'Planned'}
                                 </span>
                               </div>
 
@@ -1246,7 +1246,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                   {countInSprint} tasks
                                 </span>
                                 <span className="text-[11px] text-emerald-700 font-semibold group-hover:underline flex items-center gap-0.5">
-                                  <span>Xem chi tiết tasks</span>
+                                  <span>View tasks</span>
                                   <ArrowRight size={12} />
                                 </span>
                               </div>
@@ -1258,7 +1258,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                 {sprint.startDate} → {sprint.endDate}
                               </span>
 
-                              {/* Hành động edit sprint: CHỈ CÓ ROLE PM MỚI ĐƯỢC EDIT SPRINT (Requirement 1) */}
+                              {/* Sprint Actions: PM only */}
                               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 {isPM ? (
                                   <>
@@ -1268,14 +1268,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                         setIsEditSprintOpen(true);
                                       }}
                                       className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Chỉnh sửa Sprint (Chỉ PM)"
+                                      title="Edit Sprint (PM only)"
                                     >
                                       <Edit3 size={14} />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteSprint(sprint)}
                                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Xóa Sprint"
+                                      title="Delete Sprint"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -1283,7 +1283,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                 ) : (
                                   <span
                                     className="p-1.5 text-gray-300 rounded-lg cursor-not-allowed"
-                                    title="Chỉ có role PM mới được edit sprint"
+                                    title="Only PM can edit sprints"
                                   >
                                     <Lock size={14} />
                                   </span>
@@ -1300,15 +1300,15 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             </div>
           )}
 
-          {/* TAB 2: THÀNH VIÊN & PHÂN QUYỀN */}
+          {/* TAB 2: MEMBERS & PERMISSIONS */}
           {activeTab === 'members' && (
             <div className="space-y-6">
               <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Thành viên & Phân vai trò</h2>
+                    <h2 className="text-lg font-bold text-gray-900">Members & Roles</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Thêm thành viên vào dự án và chỉ định vai trò chuyên môn (đã tự động lọc ẩn quyền User & Admin).
+                      Add members to the project and assign specialized roles.
                     </p>
                   </div>
                   {selectedProjectId && (
@@ -1317,7 +1317,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                       className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
                     >
                       <UserPlus size={16} />
-                      <span>Thêm thành viên</span>
+                      <span>Add Member</span>
                     </button>
                   )}
                 </div>
@@ -1325,11 +1325,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                 {loadingDetails ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                     <Loader2 size={24} className="animate-spin text-emerald-600" />
-                    <span>Đang tải danh sách thành viên...</span>
+                    <span>Loading members list...</span>
                   </div>
                 ) : members.length === 0 ? (
                   <div className="py-12 text-center text-xs text-gray-400">
-                    Chưa có thành viên nào trong dự án.
+                    No members in this project yet.
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
@@ -1347,11 +1347,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="text-xs font-bold text-gray-900 truncate">
-                                  {member.userName || `Thành viên #${member.userId}`}
+                                  {member.userName || `Member #${member.userId}`}
                                 </p>
                                 {member.userId === user?.id && (
                                   <span className="text-[10px] text-gray-400 font-normal">
-                                    (Bạn)
+                                    (You)
                                   </span>
                                 )}
                               </div>
@@ -1365,7 +1365,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             <span
                               className={`px-3 py-1 text-[11px] font-bold rounded-lg border flex items-center gap-1.5 ${
                                 member.roleName === 'PROJECT_MANAGER'
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
                                   : member.roleName === 'DEVELOPER'
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : member.roleName === 'TESTER'
@@ -1381,7 +1381,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <button
                                 onClick={() => handleRemoveMember(member.userId, member.userName)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Xóa khỏi dự án"
+                                title="Remove from project"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1396,7 +1396,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             </div>
           )}
 
-          {/* TAB 3: SPRINT HIỆN TẠI & BURNDOWN (100% DỮ LIỆU THỰC TẾ) */}
+          {/* TAB 3: CURRENT SPRINT & BURNDOWN */}
           {activeTab === 'currentSprint' && (
             <div className="space-y-6">
               {!currentSprint ? (
@@ -1405,9 +1405,9 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     <Layers size={32} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Dự án chưa có Sprint nào</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Project has no Sprints yet</h3>
                     <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
-                      Tạo Sprint để phân kỳ công việc, quản lý chu kỳ phát triển và theo dõi tiến độ với biểu đồ Burndown.
+                      Create a Sprint to organize work cycles, manage sprints, and track progress with the Burndown chart.
                     </p>
                   </div>
                   <button
@@ -1415,7 +1415,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                   >
                     <Plus size={16} />
-                    <span>Tạo Sprint đầu tiên</span>
+                    <span>Create First Sprint</span>
                   </button>
                 </div>
               ) : (
@@ -1439,14 +1439,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             }`}
                           >
                             {currentSprint.status === 'ACTIVE'
-                              ? 'Đang chạy'
+                              ? 'Active'
                               : currentSprint.status === 'COMPLETED'
-                              ? 'Đã xong'
-                              : 'Kế hoạch'}
+                              ? 'Completed'
+                              : 'Planned'}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {currentSprint.goal || 'Không có mục tiêu cụ thể'}
+                          {currentSprint.goal || 'No specific goal set'}
                         </p>
                       </div>
                     </div>
@@ -1454,7 +1454,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     <div className="flex items-center gap-2.5 shrink-0">
                       {sprints.length > 1 && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                          <span className="text-[11px] text-gray-400 font-medium">Chọn sprint:</span>
+                          <span className="text-[11px] text-gray-400 font-medium">Select sprint:</span>
                           <select
                             value={currentSprint.id}
                             onChange={(e) => setSelectedBurndownSprintId(Number(e.target.value))}
@@ -1462,7 +1462,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           >
                             {sprints.map((sp) => (
                               <option key={sp.id} value={sp.id}>
-                                {sp.name} ({sp.status === 'ACTIVE' ? 'Đang chạy' : sp.status === 'COMPLETED' ? 'Đã xong' : 'Kế hoạch'})
+                                {sp.name} ({sp.status === 'ACTIVE' ? 'Active' : sp.status === 'COMPLETED' ? 'Completed' : 'Planned'})
                               </option>
                             ))}
                           </select>
@@ -1477,12 +1477,12 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <Plus size={14} />
-                        <span>Giao việc vào Sprint</span>
+                        <span>Add Task to Sprint</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Metric KPI Cards (Dữ liệu thực tế 100%) */}
+                  {/* Metric KPI Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
                       <div className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentSprint.name}</div>
@@ -1499,13 +1499,13 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         {currentSprintProgress}%
                       </div>
                       <div className="text-[11px] text-gray-500 mt-1">
-                        Tiến độ ({currentSprintDoneTasks.length}/{currentSprintTotalTasks} việc)
+                        Progress ({currentSprintDoneTasks.length}/{currentSprintTotalTasks} tasks)
                       </div>
                     </div>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
                       <div className="text-xl sm:text-2xl font-bold text-gray-900">{currentSprintTotalTasks}</div>
                       <div className="text-[11px] text-gray-500 mt-1">
-                        Cần làm: {currentSprintTodoTasks.length} · Đang làm: {currentSprintInProgressTasks.length} · Xong: {currentSprintDoneTasks.length}
+                        To Do: {currentSprintTodoTasks.length} · In Progress: {currentSprintInProgressTasks.length} · Done: {currentSprintDoneTasks.length}
                       </div>
                     </div>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
@@ -1519,7 +1519,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         {daysRemainingText}
                       </div>
                       <div className="text-[11px] text-gray-500 mt-1">
-                        Hạn chót: {currentSprint.endDate || 'Chưa đặt'}
+                        Deadline: {currentSprint.endDate || 'Not set'}
                       </div>
                     </div>
                   </div>
@@ -1528,16 +1528,16 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                   <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-bold text-gray-900">Biểu đồ Burndown — Tiến độ hoàn thành thực tế</h3>
+                        <h3 className="text-sm font-bold text-gray-900">Burndown Chart — Actual Completion Progress</h3>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Số lượng thẻ công việc còn lại theo chu kỳ thời gian của {currentSprint.name}
+                          Remaining tasks over the sprint cycle for {currentSprint.name}
                         </p>
                       </div>
                       <button
                         onClick={() => setActiveTab('sprints')}
                         className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs font-semibold shadow-xs cursor-pointer transition-colors"
                       >
-                        Xem tất cả sprint
+                        View all sprints
                       </button>
                     </div>
 
@@ -1547,9 +1547,9 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           <CheckCircle2 size={24} />
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-gray-700">Sprint này chưa có thẻ công việc nào</p>
+                          <p className="text-xs font-semibold text-gray-700">This sprint has no tasks yet</p>
                           <p className="text-[11px] text-gray-400 mt-0.5">
-                            Hãy gán công việc vào sprint để theo dõi biểu đồ Burndown.
+                            Assign tasks to this sprint to track the Burndown chart.
                           </p>
                         </div>
                         <button
@@ -1560,7 +1560,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                           <Plus size={14} />
-                          <span>Giao việc ngay</span>
+                          <span>Assign Task Now</span>
                         </button>
                       </div>
                     ) : (
@@ -1570,7 +1570,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             <div key={bar.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
                               {/* Hover Tooltip */}
                               <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 px-2 py-1 bg-gray-900 text-white text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none z-10 shadow-md">
-                                Ngày {bar.day}: Còn {bar.remaining} thẻ
+                                Day {bar.day}: {bar.remaining} tasks remaining
                               </div>
 
                               <div
@@ -1584,7 +1584,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <span className={`text-[10px] font-medium ${
                                 bar.isHighlight ? 'text-emerald-700 font-bold' : 'text-gray-400'
                               }`}>
-                                N{bar.day}
+                                D{bar.day}
                               </span>
                             </div>
                           ))}
@@ -1594,28 +1594,28 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg font-medium text-[11px]">
-                              Cần làm: <strong className="text-gray-900">{currentSprintTodoTasks.length}</strong>
+                              To Do: <strong className="text-gray-900">{currentSprintTodoTasks.length}</strong>
                             </span>
                             <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium text-[11px]">
-                              Đang làm: <strong className="text-blue-900">{currentSprintInProgressTasks.length}</strong>
+                              In Progress: <strong className="text-blue-900">{currentSprintInProgressTasks.length}</strong>
                             </span>
                             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-medium text-[11px]">
-                              Hoàn thành: <strong className="text-emerald-900">{currentSprintDoneTasks.length}</strong>
+                              Done: <strong className="text-emerald-900">{currentSprintDoneTasks.length}</strong>
                             </span>
                           </div>
 
                           <div className="text-gray-500 font-medium text-right">
                             {currentSprintRemainingTasks === 0 ? (
                               <span className="text-emerald-700 font-semibold">
-                                🎉 Tuyệt vời! Tất cả công việc trong sprint này đã hoàn thành.
+                                🎉 Great job! All tasks in this sprint are completed.
                               </span>
                             ) : isSprintOverdue ? (
                               <span className="text-red-600 font-semibold">
-                                ⚠️ Sprint đã quá hạn nhưng vẫn còn {currentSprintRemainingTasks} thẻ công việc chưa hoàn thành.
+                                ⚠️ Sprint is overdue with {currentSprintRemainingTasks} incomplete tasks remaining.
                               </span>
                             ) : (
                               <span>
-                                Còn <strong className="text-gray-900 font-semibold">{currentSprintRemainingTasks} thẻ</strong> chưa xong ({currentSprintProgress}% hoàn thành).
+                                <strong className="text-gray-900 font-semibold">{currentSprintRemainingTasks} tasks</strong> remaining ({currentSprintProgress}% completed).
                               </span>
                             )}
                           </div>
@@ -1624,13 +1624,13 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     )}
                   </div>
 
-                  {/* Danh sách các công việc trong Sprint */}
+                  {/* Sprint Tasks List */}
                   <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 size={18} className="text-emerald-600" />
                         <h3 className="text-sm font-bold text-gray-900">
-                          Công việc thuộc {currentSprint.name} ({currentSprintTasks.length})
+                          Tasks in {currentSprint.name} ({currentSprintTasks.length})
                         </h3>
                       </div>
                       <button
@@ -1641,13 +1641,13 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                       >
                         <Plus size={14} />
-                        <span>+ Thêm việc</span>
+                        <span>+ Add Task</span>
                       </button>
                     </div>
 
                     {currentSprintTasks.length === 0 ? (
                       <div className="py-6 text-center text-xs text-gray-400">
-                        Chưa có thẻ công việc nào thuộc sprint này.
+                        No tasks in this sprint yet.
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1703,18 +1703,18 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                 }`}
                               >
                                 {t.status === 'DONE'
-                                  ? 'Hoàn thành'
+                                  ? 'Done'
                                   : t.status === 'IN_PROGRESS'
-                                  ? 'Đang làm'
+                                  ? 'In Progress'
                                   : t.status === 'CLOSED'
-                                  ? 'Đã đóng'
-                                  : 'Cần làm'}
+                                  ? 'Closed'
+                                  : 'To Do'}
                               </span>
 
                               <button
                                 onClick={() => handleOpenEditTask(t)}
                                 className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                                title="Chỉnh sửa công việc"
+                                title="Edit task"
                               >
                                 <Edit3 size={15} />
                               </button>
@@ -1729,14 +1729,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             </div>
           )}
 
-          {/* TAB 4: PHÂN CÔNG CÔNG VIỆC (Cho phép filter sprint và thành viên - Requirement 5) */}
+          {/* TAB 4: TASK ASSIGNMENTS */}
           {activeTab === 'assignments' && (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Phân công công việc (Tasks)</h2>
+                  <h2 className="text-lg font-bold text-gray-900">Task Assignments</h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Giao việc trực tiếp cho các thành viên trong dự án và giám sát tiến độ thực hiện.
+                    Assign tasks directly to project members and track implementation progress.
                   </p>
                 </div>
                 {selectedProjectId && (
@@ -1748,81 +1748,81 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus size={16} />
-                    <span>Giao việc mới (Tạo Task)</span>
+                    <span>Create New Task</span>
                   </button>
                 )}
               </div>
 
-              {/* BỘ LỌC PHÂN CÔNG: FILTER SPRINT, THÀNH VIÊN, TRẠNG THÁI & MÃ TASK (Requirement 5) */}
+              {/* Assignment Filters */}
               <div className="p-4 bg-gray-50/70 rounded-2xl border border-gray-100 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
                   <Filter size={14} className="text-emerald-600" />
-                  <span>Bộ lọc nâng cao</span>
+                  <span>Advanced Filters</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* 1. Filter theo Sprint */}
+                  {/* 1. Filter by Sprint */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Lọc theo Sprint
+                      Filter by Sprint
                     </label>
                     <select
                       value={assignmentSprintFilter}
                       onChange={(e) => setAssignmentSprintFilter(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                     >
-                      <option value="ALL">Tất cả Sprint</option>
+                      <option value="ALL">All Sprints</option>
                       {sprints.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
                         </option>
                       ))}
-                      <option value="NO_SPRINT">Chưa gán Sprint (Backlog)</option>
+                      <option value="NO_SPRINT">No Sprint (Backlog)</option>
                     </select>
                   </div>
 
-                  {/* 2. Filter theo Thành viên */}
+                  {/* 2. Filter by Member */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Lọc theo Thành viên
+                      Filter by Member
                     </label>
                     <select
                       value={assignmentMemberFilter}
                       onChange={(e) => setAssignmentMemberFilter(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                     >
-                      <option value="ALL">Tất cả thành viên</option>
+                      <option value="ALL">All Members</option>
                       {members.map((m) => (
                         <option key={m.userId} value={m.userId}>
                           {m.userName || `User #${m.userId}`} ({m.roleName || 'Member'})
                         </option>
                       ))}
-                      <option value="UNASSIGNED">Chưa phân công</option>
+                      <option value="UNASSIGNED">Unassigned</option>
                     </select>
                   </div>
 
-                  {/* 3. Filter theo Trạng thái */}
+                  {/* 3. Filter by Status */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Trạng thái
+                      Status
                     </label>
                     <select
                       value={assignmentStatusFilter}
                       onChange={(e) => setAssignmentStatusFilter(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                     >
-                      <option value="ALL">Tất cả trạng thái</option>
-                      <option value="TO_DO">Cần làm (To Do)</option>
-                      <option value="IN_PROGRESS">Đang làm (In Progress)</option>
-                      <option value="DONE">Hoàn thành (Done)</option>
-                      <option value="CLOSED">Đã đóng (Closed)</option>
+                      <option value="ALL">All Statuses</option>
+                      <option value="TO_DO">To Do</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="DONE">Done</option>
+                      <option value="CLOSED">Closed</option>
                     </select>
                   </div>
 
-                  {/* 4. Filter theo Mã task / Tiêu đề */}
+                  {/* 4. Filter by Task ID / Title */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Mã task hoặc tên
+                      Task ID or title
                     </label>
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
@@ -1830,7 +1830,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         type="text"
                         value={assignmentSearchQuery}
                         onChange={(e) => setAssignmentSearchQuery(e.target.value)}
-                        placeholder="Tìm #1, TASK-1..."
+                        placeholder="Search #1, TASK-1..."
                         className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-gray-800"
                       />
                     </div>
@@ -1841,14 +1841,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
               {loadingDetails ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                   <Loader2 size={24} className="animate-spin text-emerald-600" />
-                  <span>Đang tải danh sách công việc...</span>
+                  <span>Loading task list...</span>
                 </div>
               ) : filteredAssignmentsTasks.length === 0 ? (
                 <div className="py-12 text-center text-xs text-gray-400 space-y-3 border-2 border-dashed border-gray-100 rounded-2xl">
                   <p>
                     {tasks.length === 0
-                      ? 'Chưa có nhiệm vụ nào được phân công trong dự án này.'
-                      : 'Không có công việc nào khớp với bộ lọc.'}
+                      ? 'No tasks assigned in this project yet.'
+                      : 'No tasks match the filters.'}
                   </p>
                   <button
                     onClick={() => {
@@ -1857,7 +1857,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     }}
                     className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-semibold cursor-pointer"
                   >
-                    + Bấm vào đây để giao việc đầu tiên
+                    + Click here to create the first task
                   </button>
                 </div>
               ) : (
@@ -1878,11 +1878,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {/* MÃ TASK */}
+                              {/* Task ID */}
                               <span
                                 onClick={() => handleOpenTaskDetail(task)}
                                 className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer transition-colors"
-                                title="Xem chi tiết nhiệm vụ"
+                                title="View task details"
                               >
                                 #{task.id}
                               </span>
@@ -1890,7 +1890,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <span
                                 onClick={() => handleOpenTaskDetail(task)}
                                 className={`text-xs font-bold cursor-pointer hover:text-emerald-700 transition-colors ${isDone || isClosed ? 'line-through text-gray-400' : 'text-gray-900'}`}
-                                title="Bấm để xem chi tiết"
+                                title="Click to view details"
                               >
                                 {task.title}
                               </span>
@@ -1924,25 +1924,25 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               {task.dueDate && (
                                 <span className="flex items-center gap-1">
                                   <Calendar size={12} />
-                                  Hạn: {task.dueDate}
+                                  Due: {task.dueDate}
                                 </span>
                               )}
 
-                              {/* Nút bật/tắt tạo Subtask (Requirement 4) */}
+                              {/* Toggle Subtasks */}
                               <button
                                 type="button"
                                 onClick={() => toggleTaskSubtasks(task.id)}
                                 className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
                               >
                                 <ListChecks size={13} />
-                                <span>Việc phụ (Subtasks)</span>
+                                <span>Subtasks</span>
                                 {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                               </button>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                            {/* Người được giao (Chỉ từ danh sách members của project) */}
+                            {/* Assignee */}
                             {assignee || task.assigneeName ? (
                               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-xl text-xs">
                                 <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
@@ -1953,21 +1953,21 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                     {task.assigneeName || assignee?.userName}
                                   </div>
                                   <div className="text-[9px] text-gray-400 leading-tight">
-                                    {assignee?.roleName || 'Thành viên'}
+                                    {assignee?.roleName || 'Member'}
                                   </div>
                                 </div>
                               </div>
                             ) : (
                               <span className="px-2.5 py-1 text-[11px] rounded-lg bg-gray-100 text-gray-500 italic">
-                                Chưa gán
+                                Unassigned
                               </span>
                             )}
 
-                            {/* Trạng thái công việc */}
+                            {/* Task Status */}
                             <select
                               value={task.status}
                               disabled={!canChangeTaskStatus(task)}
-                              title={!canChangeTaskStatus(task) ? 'Chỉ PM hoặc người được giao việc mới có quyền đổi trạng thái' : undefined}
+                              title={!canChangeTaskStatus(task) ? 'Only PM or the assignee can change task status' : undefined}
                               onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value)}
                               className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border focus:outline-none ${
                                 !canChangeTaskStatus(task) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
@@ -1981,38 +1981,38 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                                   : 'bg-amber-50 text-amber-700 border-amber-200'
                               }`}
                             >
-                              <option value="TO_DO">Cần làm</option>
-                              <option value="IN_PROGRESS">Đang làm</option>
-                              <option value="DONE">Hoàn thành</option>
-                              <option value="CLOSED">Đã đóng (Closed)</option>
+                              <option value="TO_DO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="DONE">Done</option>
+                              <option value="CLOSED">Closed</option>
                             </select>
 
-                            {/* Nút Xem chi tiết */}
+                            {/* View Detail */}
                             <button
                               type="button"
                               onClick={() => handleOpenTaskDetail(task)}
                               className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                              title="Xem chi tiết nhiệm vụ"
+                              title="View task details"
                             >
                               <Eye size={15} />
                             </button>
 
-                            {/* Nút Chỉnh sửa */}
+                            {/* Edit Task */}
                             <button
                               type="button"
                               onClick={() => handleOpenEditTask(task)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                              title="Chỉnh sửa nhiệm vụ"
+                              title="Edit task"
                             >
                               <Edit3 size={15} />
                             </button>
 
-                            {/* Nút xóa task: CHỈ PM MỚI CÓ QUYỀN XÓA (Thành viên không thể xóa, chỉ chuyển sang CLOSED) */}
+                            {/* Delete Task (PM Only) */}
                             {isPM && (
                               <button
                                 onClick={() => handleDeleteTask(task.id, task.title)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Chuyển vào thùng rác (Chỉ PM)"
+                                title="Move to trash (PM only)"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -2020,7 +2020,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           </div>
                         </div>
 
-                        {/* Khu vực tạo và quản lý Subtasks (Requirement 4) */}
+                        {/* Subtasks area */}
                         {isExpanded && (
                           <div className="pt-2 pl-4 animate-in fade-in">
                             <SubtaskList
@@ -2039,19 +2039,19 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
             </div>
           )}
 
-          {/* TAB 5: THÙNG RÁC CÔNG VIỆC (XÓA MỀM & KHÔI PHỤC) */}
+          {/* TAB 5: TASK TRASH BIN */}
           {activeTab === 'trash' && (
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-gray-900">Thùng rác công việc</h2>
+                    <h2 className="text-lg font-bold text-gray-900">Task Trash Bin</h2>
                     <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
-                      {trashTasks.length} mục đã xóa
+                      {trashTasks.length} deleted items
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Các công việc đã xóa mềm trong dự án. Bạn có thể khôi phục về trạng thái hoạt động hoặc xóa vĩnh viễn khỏi hệ thống.
+                    Soft-deleted tasks in this project. You can restore them to active status or permanently delete them.
                   </p>
                 </div>
 
@@ -2061,21 +2061,21 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                   className="px-3.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-gray-200 shrink-0"
                 >
                   <RotateCcw size={14} className={loadingTrash ? 'animate-spin' : ''} />
-                  <span>Làm mới thùng rác</span>
+                  <span>Refresh Trash</span>
                 </button>
               </div>
 
               {loadingTrash ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
                   <Loader2 size={24} className="animate-spin text-emerald-600" />
-                  <span>Đang tải thùng rác...</span>
+                  <span>Loading trash bin...</span>
                 </div>
               ) : trashTasks.length === 0 ? (
                 <div className="py-16 text-center text-xs text-gray-400 space-y-3 border-2 border-dashed border-gray-100 rounded-2xl">
                   <Trash2 size={36} className="mx-auto text-gray-300" />
-                  <p className="text-sm font-medium text-gray-600">Thùng rác trống</p>
+                  <p className="text-sm font-medium text-gray-600">Trash Bin is Empty</p>
                   <p className="text-gray-400 max-w-sm mx-auto">
-                    Hiện không có công việc nào bị xóa trong dự án này.
+                    There are currently no deleted tasks in this project.
                   </p>
                 </div>
               ) : (
@@ -2106,7 +2106,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             )}
 
                             <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-red-50 text-red-600 border border-red-200">
-                              Đã xóa
+                              Deleted
                             </span>
                           </div>
 
@@ -2119,34 +2119,34 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                           <div className="flex items-center gap-3 text-[11px] text-gray-400">
                             {task.dueDate && (
                               <span className="flex items-center gap-1">
-                                <Calendar size={12} /> Hạn: {task.dueDate}
+                                <Calendar size={12} /> Due: {task.dueDate}
                               </span>
                             )}
                             {assignee && (
-                              <span>Người nhận: {assignee.userName}</span>
+                              <span>Assignee: {assignee.userName}</span>
                             )}
                           </div>
                         </div>
 
-                        {/* Actions: Khôi phục & Xóa vĩnh viễn */}
+                        {/* Actions: Restore & Permanently Delete */}
                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                           <button
                             onClick={() => handleRestoreTask(task.id)}
                             className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200"
-                            title="Khôi phục công việc"
+                            title="Restore task"
                           >
                             <RotateCcw size={13} />
-                            <span>Khôi phục</span>
+                            <span>Restore</span>
                           </button>
 
                           {isPM && (
                             <button
                               onClick={() => handlePermanentDeleteTask(task.id, task.title)}
                               className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-red-200"
-                              title="Xóa vĩnh viễn khỏi DB"
+                              title="Permanently delete from database"
                             >
                               <Trash2 size={13} />
-                              <span>Xóa vĩnh viễn</span>
+                              <span>Permanently Delete</span>
                             </button>
                           )}
                         </div>
@@ -2160,7 +2160,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         </div>
       </div>
 
-      {/* Modal Tạo Sprint (Chỉ PM mới mở được) */}
+      {/* Modal Create Sprint (PM only) */}
       {selectedProjectId && (
         <CreateSprintModal
           projectId={selectedProjectId}
@@ -2170,7 +2170,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         />
       )}
 
-      {/* Modal Chỉnh Sửa Sprint (Có kiểm tra quyền PM) */}
+      {/* Modal Edit Sprint */}
       <EditSprintModal
         sprint={editingSprint}
         isOpen={isEditSprintOpen}
@@ -2182,7 +2182,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         onSuccess={handleSprintUpdated}
       />
 
-      {/* Modal Giao Việc / Tạo Task Mới (Có hỗ trợ initialSprintId khi tạo từ Sprint View) */}
+      {/* Modal Create Task */}
       {selectedProjectId && (
         <CreateTaskModal
           projectId={selectedProjectId}
@@ -2198,7 +2198,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         />
       )}
 
-      {/* Modal Thêm Thành Viên */}
+      {/* Modal Add Member */}
       {selectedProjectId && (
         <AddProjectMemberModal
           projectId={selectedProjectId}
@@ -2209,14 +2209,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         />
       )}
 
-      {/* Modal Tạo Dự Án Mới */}
+      {/* Modal Create Project */}
       <CreateProjectModal
         isOpen={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
         onSuccess={handleProjectCreated}
       />
 
-      {/* Modal Xem Chi Tiết Task / Subtask */}
+      {/* Modal Task / Subtask Details */}
       <TaskDetailModal
         task={selectedDetailTask}
         subtask={selectedDetailSubtask}
@@ -2240,7 +2240,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         }}
         onDeleteTask={async (taskId) => {
           const t = tasks.find((tk) => tk.id === taskId);
-          await handleDeleteTask(taskId, t?.title || 'nhiệm vụ');
+          await handleDeleteTask(taskId, t?.title || 'task');
           setIsDetailModalOpen(false);
         }}
         onDeleteSubtask={handleDeleteSubtask}
@@ -2255,7 +2255,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         }}
       />
 
-      {/* Modal Chỉnh Sửa Task */}
+      {/* Modal Edit Task */}
       <EditTaskModal
         task={editingTask}
         members={members}
@@ -2268,7 +2268,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         onSuccess={handleTaskUpdated}
       />
 
-      {/* Modal Tạo / Chỉnh Sửa Subtask */}
+      {/* Modal Create / Edit Subtask */}
       {subtaskFormTaskId && (
         <SubtaskFormModal
           taskId={subtaskFormTaskId}
@@ -2288,7 +2288,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         />
       )}
 
-      {/* Modal Thông Báo Lỗi / Từ Chối Quyền */}
+      {/* Modal Error Notification */}
       <ErrorModal
         isOpen={errorModalState.isOpen}
         onClose={() => setErrorModalState((prev) => ({ ...prev, isOpen: false }))}

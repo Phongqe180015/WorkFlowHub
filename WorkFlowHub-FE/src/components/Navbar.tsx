@@ -38,10 +38,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
         </div>
 
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-          <a href="#features" className="hover:text-emerald-600 transition-colors">Tính năng</a>
-          <a href="#roles" className="hover:text-emerald-600 transition-colors">Phân quyền</a>
-          <a href="#pricing" className="hover:text-emerald-600 transition-colors">Bảng giá</a>
-          <a href="#tech" className="hover:text-emerald-600 transition-colors">Công nghệ</a>
+          <a href="#features" className="hover:text-emerald-600 transition-colors">Features</a>
+          <a href="#roles" className="hover:text-emerald-600 transition-colors">Roles</a>
+          <a href="#pricing" className="hover:text-emerald-600 transition-colors">Pricing</a>
+          <a href="#tech" className="hover:text-emerald-600 transition-colors">Tech Stack</a>
         </nav>
 
         <div className="flex items-center gap-3">
@@ -63,11 +63,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                title="Đăng xuất"
+                title="Sign Out"
                 className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {loggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
-                <span>Đăng xuất</span>
+                <span>Sign Out</span>
               </button>
             </div>
           ) : (
@@ -76,13 +76,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
                 onClick={onOpenLogin}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors cursor-pointer"
               >
-                Đăng nhập
+                Sign In
               </button>
               <button
                 onClick={onOpenRegister}
                 className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-full shadow-xs hover:shadow transition-all cursor-pointer"
               >
-                Bắt đầu miễn phí
+                Get Started Free
               </button>
             </>
           )}

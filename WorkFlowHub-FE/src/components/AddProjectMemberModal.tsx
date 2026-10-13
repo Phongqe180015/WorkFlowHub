@@ -68,8 +68,8 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
         setSelectedRoleId('');
       }
     } catch (err: any) {
-      console.error('Lỗi tải dữ liệu người dùng/vai trò:', err);
-      setError('Không thể tải danh sách tài khoản hoặc vai trò từ máy chủ.');
+      console.error('Error loading users/roles:', err);
+      setError('Could not load user accounts or roles from server.');
     } finally {
       setLoadingData(false);
     }
@@ -80,11 +80,11 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
-      setError('Vui lòng chọn thành viên cần thêm');
+      setError('Please select a member to add');
       return;
     }
     if (!selectedRoleId) {
-      setError('Vui lòng chọn vai trò cho thành viên');
+      setError('Please select a project role');
       return;
     }
 
@@ -102,8 +102,8 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
       onSuccess(newMember);
       onClose();
     } catch (err: any) {
-      console.error('Lỗi khi thêm thành viên:', err);
-      setError(err.message || 'Không thể thêm thành viên vào dự án. Vui lòng thử lại!');
+      console.error('Error adding member:', err);
+      setError(err.message || 'Could not add member to project. Please try again!');
       setSubmitting(false);
     }
   };
@@ -124,9 +124,9 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
             <UserPlus size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Thêm thành viên vào dự án</h2>
+            <h2 className="text-xl font-bold text-gray-900">Add Member to Project</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Gán vai trò chuyên môn phù hợp cho nhân sự
+              Assign appropriate project role to team members
             </p>
           </div>
         </div>
@@ -141,17 +141,17 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
         {loadingData ? (
           <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
             <Loader2 size={24} className="animate-spin text-emerald-600" />
-            <span>Đang tải danh sách tài khoản và vai trò...</span>
+            <span>Loading user accounts and project roles...</span>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Chọn thành viên <span className="text-red-500">*</span>
+                Select Member <span className="text-red-500">*</span>
               </label>
               {users.length === 0 ? (
                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500">
-                  Không còn người dùng nào chưa tham gia dự án.
+                  All available users are already members of this project.
                 </div>
               ) : (
                 <select
@@ -173,17 +173,17 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-gray-700">
-                  Gắn vai trò trong dự án <span className="text-red-500">*</span>
+                  Assign Project Role <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
-                  Đã ẩn role Admin & User
+                  Admin &amp; User roles hidden
                 </span>
               </div>
 
               {roles.length === 0 ? (
                 <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center gap-2">
                   <ShieldAlert size={16} className="shrink-0" />
-                  <span>Không tìm thấy vai trò dự án khả dụng.</span>
+                  <span>No assignable project roles found.</span>
                 </div>
               ) : (
                 <select
@@ -203,7 +203,7 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
             </div>
 
             <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-[11px] text-emerald-800 leading-relaxed">
-              💡 <strong>Lưu ý:</strong> Danh sách vai trò trên được tải từ hệ thống và đã tự động ẩn đi hai vai trò hệ thống <code>ADMIN</code> và <code>USER</code> để đảm bảo an toàn phân quyền dự án.
+              💡 <strong>Note:</strong> System roles <code>ADMIN</code> and <code>USER</code> are automatically excluded to preserve project permission boundaries.
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -213,7 +213,7 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
                 disabled={submitting}
                 className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
               >
-                Hủy
+                Cancel
               </button>
               <button
                 type="submit"
@@ -221,7 +221,7 @@ export const AddProjectMemberModal: React.FC<AddProjectMemberModalProps> = ({
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
               >
                 {submitting && <Loader2 size={14} className="animate-spin" />}
-                {submitting ? 'Đang thêm...' : 'Thêm vào dự án'}
+                {submitting ? 'Adding...' : 'Add to Project'}
               </button>
             </div>
           </form>

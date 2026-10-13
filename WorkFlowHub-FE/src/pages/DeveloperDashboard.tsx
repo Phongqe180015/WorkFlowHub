@@ -8,40 +8,40 @@ export const DeveloperDashboard: React.FC = () => {
   const [newComment, setNewComment] = useState('');
 
   const sidebarItems = [
-    { id: 'myTasks', label: 'Công việc của tôi' },
-    { id: 'sprintBoard', label: 'Bảng sprint' },
-    { id: 'comments', label: 'Bình luận' },
-    { id: 'attachments', label: 'Tệp đính kèm' },
-    { id: 'techNotes', label: 'Ghi chú kỹ thuật' },
+    { id: 'myTasks', label: 'My Tasks' },
+    { id: 'sprintBoard', label: 'Sprint Board' },
+    { id: 'comments', label: 'Comments' },
+    { id: 'attachments', label: 'Attachments' },
+    { id: 'techNotes', label: 'Technical Notes' },
   ];
 
   // Developer personal task cards (Image 7)
   const developerTasks = [
     {
       id: 1,
-      category: 'Hạ tầng',
-      title: 'Kết nối Kafka cho thông báo',
-      deadline: 'Hôm nay',
+      category: 'Infrastructure',
+      title: 'Connect Kafka for Notifications',
+      deadline: 'Today',
       progress: 70,
-      priority: 'Ưu tiên Cao',
+      priority: 'High Priority',
       color: 'bg-emerald-500',
     },
     {
       id: 2,
-      category: 'Hiệu năng',
-      title: 'Đánh chỉ số hiệu suất API',
-      deadline: 'Thứ 5',
+      category: 'Performance',
+      title: 'Benchmark API Performance',
+      deadline: 'Thursday',
       progress: 40,
-      priority: 'Ưu tiên Trung bình',
+      priority: 'Medium Priority',
       color: 'bg-emerald-500',
     },
     {
       id: 3,
-      category: 'Tài liệu',
-      title: 'Viết tài liệu API công khai',
-      deadline: 'Thứ 6',
+      category: 'Documentation',
+      title: 'Write Public API Docs',
+      deadline: 'Friday',
       progress: 10,
-      priority: 'Ưu tiên Thấp',
+      priority: 'Low Priority',
       color: 'bg-emerald-500',
     },
   ];
@@ -54,7 +54,7 @@ export const DeveloperDashboard: React.FC = () => {
       ...comments,
       {
         id: Date.now(),
-        userName: 'Tôi',
+        userName: 'Me',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         content: newComment,
         isSelf: true,
@@ -70,7 +70,7 @@ export const DeveloperDashboard: React.FC = () => {
         <div className="lg:col-span-3">
           <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-xs space-y-1">
             <div className="text-[11px] font-bold text-gray-400 tracking-wider px-3 py-2 uppercase">
-              Nhà phát triển
+              Developer
             </div>
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -100,9 +100,9 @@ export const DeveloperDashboard: React.FC = () => {
         <div className="lg:col-span-9 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Công việc của tôi</h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">My Tasks</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Giao diện demo cho vai trò <strong className="font-semibold text-gray-700">Nhà phát triển</strong> — dữ liệu minh họa, chưa lưu thật.
+              Demo interface for <strong className="font-semibold text-gray-700">Developer</strong> role — sample data preview.
             </p>
           </div>
 
@@ -110,28 +110,28 @@ export const DeveloperDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">3</div>
-              <div className="text-[11px] text-gray-500 mt-1">Thẻ đang phụ trách</div>
+              <div className="text-[11px] text-gray-500 mt-1">Assigned Tasks</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">1</div>
-              <div className="text-[11px] text-gray-500 mt-1">Hạn hôm nay</div>
+              <div className="text-[11px] text-gray-500 mt-1">Due Today</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">5</div>
-              <div className="text-[11px] text-gray-500 mt-1">Bình luận mới</div>
+              <div className="text-[11px] text-gray-500 mt-1">New Comments</div>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">2</div>
-              <div className="text-[11px] text-gray-500 mt-1">Pull request mở</div>
+              <div className="text-[11px] text-gray-500 mt-1">Open PRs</div>
             </div>
           </div>
 
-          {/* Công việc của tôi Cards */}
+          {/* My Tasks Cards */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Công việc của tôi</h3>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">My Tasks</h3>
               <button className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold shadow-xs cursor-pointer">
-                <Plus size={14} /> Thẻ mới
+                <Plus size={14} /> New Task
               </button>
             </div>
 
@@ -149,7 +149,7 @@ export const DeveloperDashboard: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between items-center text-[10px] text-gray-500 mb-1">
-                      <span>Tiến độ</span>
+                      <span>Progress</span>
                       <span className="font-semibold text-gray-700">{task.progress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -168,13 +168,13 @@ export const DeveloperDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom Grid: Bình luận + Tệp đính kèm (Image 7) */}
+          {/* Bottom Grid: Comments + Attachments */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Bình luận card */}
+            {/* Comments card */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs flex flex-col justify-between space-y-4">
               <div>
                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-4">
-                  Bình luận — Kết nối Kafka cho thông báo
+                  Comments — Connect Kafka for Notifications
                 </h3>
 
                 <div className="space-y-3">
@@ -203,7 +203,7 @@ export const DeveloperDashboard: React.FC = () => {
                   type="text"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Viết bình luận..."
+                  placeholder="Write a comment..."
                   className="flex-1 px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
                 <button
@@ -215,9 +215,9 @@ export const DeveloperDashboard: React.FC = () => {
               </form>
             </div>
 
-            {/* Tệp đính kèm card */}
+            {/* Attachments card */}
             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Tệp đính kèm</h3>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Attachments</h3>
 
               <div className="divide-y divide-gray-100">
                 {mockAttachments.map((f) => (
@@ -229,7 +229,7 @@ export const DeveloperDashboard: React.FC = () => {
                       </div>
                     </div>
                     <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer">
-                      <Download size={12} /> Tải xuống
+                      <Download size={12} /> Download
                     </button>
                   </div>
                 ))}

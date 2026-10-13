@@ -76,7 +76,7 @@ const MainApp: React.FC = () => {
   };
 
   const renderDashboardByRole = () => {
-    // 1. Phân quyền khi đã đăng nhập (Dựa trên roleName hoặc currentRole)
+    // 1. Role dispatch when authenticated (based on roleName or currentRole)
     if (isAuthenticated && user) {
       const activeRole = (currentRole || user.roleName || user.role || 'USER').toUpperCase();
       if (activeRole === 'ADMIN') {
@@ -93,7 +93,7 @@ const MainApp: React.FC = () => {
       return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
     }
 
-    // 2. Chế độ xem trước (Preview demo)
+    // 2. Preview mode (Demo)
     switch (currentRole) {
       case 'ADMIN':
         return <AdminDashboard />;

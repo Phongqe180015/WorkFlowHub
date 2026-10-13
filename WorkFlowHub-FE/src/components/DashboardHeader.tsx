@@ -11,14 +11,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
   const [loggingOut, setLoggingOut] = useState(false);
 
   const roles: { id: RoleType; label: string; icon: React.ReactNode; badge: string }[] = [
-    { id: 'ADMIN', label: 'Quản trị', icon: <Shield size={14} />, badge: 'ADMIN' },
-    { id: 'USER', label: 'Thành viên', icon: <UserIcon size={14} />, badge: 'USER' },
-    { id: 'PROJECT_MANAGER', label: 'Quản lý dự án', icon: <Kanban size={14} />, badge: 'PROJECT MANAGER' },
-    { id: 'DEVELOPER', label: 'Nhà phát triển', icon: <Code2 size={14} />, badge: 'DEVELOPER' },
-    { id: 'VIEWER', label: 'Người xem', icon: <Eye size={14} />, badge: 'VIEWER' },
+    { id: 'ADMIN', label: 'Admin', icon: <Shield size={14} />, badge: 'ADMIN' },
+    { id: 'USER', label: 'Member', icon: <UserIcon size={14} />, badge: 'USER' },
+    { id: 'PROJECT_MANAGER', label: 'Project Manager', icon: <Kanban size={14} />, badge: 'PROJECT MANAGER' },
+    { id: 'DEVELOPER', label: 'Developer', icon: <Code2 size={14} />, badge: 'DEVELOPER' },
+    { id: 'VIEWER', label: 'Viewer', icon: <Eye size={14} />, badge: 'VIEWER' },
   ];
 
-  // Xác định role hiển thị
+  // Effective role determination
   const effectiveRole: RoleType = isAuthenticated && user 
     ? (currentRole || ((user.roleName || user.role || 'USER').toUpperCase() as RoleType))
     : currentRole;
@@ -56,7 +56,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
           </span>
         </div>
 
-        {/* Khi chưa đăng nhập (ở chế độ preview): hiển thị role switcher. Khi đã đăng nhập: hiển thị phân quyền hiện tại */}
+        {/* When not logged in (preview mode): display role switcher. When logged in: display active workspace */}
         {!isAuthenticated ? (
           <div className="flex items-center bg-gray-100/80 p-1 rounded-full border border-gray-200/60">
             {roles.map((r) => {
@@ -79,7 +79,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
         ) : (
           <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 bg-gray-50 rounded-full border border-gray-200/60 text-xs text-gray-600">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Không gian làm việc: <strong className="text-gray-900">{currentRoleObj.label}</strong></span>
+            <span>Workspace: <strong className="text-gray-900">{currentRoleObj.label}</strong></span>
           </div>
         )}
 
@@ -102,18 +102,18 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
             onClick={onBackHome}
             className="text-xs font-medium text-gray-500 hover:text-emerald-700 flex items-center gap-1 transition-colors cursor-pointer"
           >
-            <ArrowLeft size={14} /> Trang chủ
+            <ArrowLeft size={14} /> Home
           </button>
 
-          {/* Nút Đăng xuất rõ ràng gọi API logout */}
+          {/* Sign Out Button */}
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            title="Đăng xuất tài khoản"
+            title="Sign Out"
             className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             {loggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
-            <span className="hidden sm:inline">Đăng xuất</span>
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </div>
