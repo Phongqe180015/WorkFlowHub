@@ -89,39 +89,54 @@ public class SubtaskService implements ISubtaskService {
         SubtaskEntity entity = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(SUBTASK, id));
 
-        handleUpdateStatus(request, entity);
+        validateBeforeUpdate(request, entity);
 
         mapper.updateEntityFromRequest(request, entity);
         return mapper.toResponse(repository.save(entity));
     }
 
+    private void validateBeforeUpdate(UpdateSubtaskRequest request, SubtaskEntity entity) {
+        handleUpdateStatus(request, entity);
+        handleUpdateAssign(request, entity);
+    }
+
+    private void handleUpdateAssign(UpdateSubtaskRequest request, SubtaskEntity entity) {
+        if(ObjectUtils.isNotEmpty(request.getAssigneeId()) && !request.getAssigneeId().equals(entity.getAssignee().getId())){
+            validateRoles(entity);
+        }
+    }
+
     private void handleUpdateStatus(UpdateSubtaskRequest request, SubtaskEntity entity) {
         if (request.getIsCompleted() != null && !request.getIsCompleted().equals(entity.getIsCompleted())) {
-            Long currentUserId = null;
-            try {
-                currentUserId = SecurityUtils.getCurrentUserId();
-            } catch (Exception ignored) {
-            }
+            validateRoles(entity);
+        }
+    }
 
-            Authentication auth = getAuthentication();
+    private void validateRoles(SubtaskEntity entity) {
+        Long currentUserId = null;
+        try {
+            currentUserId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+        }
 
-            boolean isAdmin = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+        Authentication auth = getAuthentication();
 
-            TaskEntity task = entity.getTask();
-            Long projectId = task.getProject().getId();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
 
-            boolean isPM = validateRole(isAdmin, currentUserId, task, projectId);
+        TaskEntity task = entity.getTask();
+        Long projectId = task.getProject().getId();
 
-            boolean isTaskAssignee = task.getAssignee() != null
-                    && task.getAssignee().getId().equals(currentUserId);
+        boolean isPM = validateRole(isAdmin, currentUserId, task, projectId);
 
-            boolean isSubtaskAssignee = entity.getAssignee() != null
-                    && entity.getAssignee().getId().equals(currentUserId);
+        boolean isTaskAssignee = task.getAssignee() != null
+                && task.getAssignee().getId().equals(currentUserId);
 
-            if (!isPM && !isTaskAssignee && !isSubtaskAssignee) {
-                throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
-            }
+        boolean isSubtaskAssignee = entity.getAssignee() != null
+                && entity.getAssignee().getId().equals(currentUserId);
+
+        if (!isPM && !isTaskAssignee && !isSubtaskAssignee) {
+            throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
         }
     }
 

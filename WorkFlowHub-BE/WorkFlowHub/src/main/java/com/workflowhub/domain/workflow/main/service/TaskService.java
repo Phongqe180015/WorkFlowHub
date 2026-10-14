@@ -1,6 +1,7 @@
 package com.workflowhub.domain.workflow.main.service;
 
 import com.workflowhub.common.enums.RoleEnums;
+import com.workflowhub.common.exception.BadRequestException;
 import com.workflowhub.common.exception.ForbiddenException;
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.exception.UnauthorizedException;
@@ -90,31 +91,46 @@ public class TaskService implements ITaskService {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
 
-        handleUpdateStatus(request, existing);
+        validateBeforeUpdateTask(request, existing);
 
         taskMapper.updateEntityFromRequest(request, existing);
         TaskEntity saved = repository.save(existing);
         return taskMapper.toResponse(saved);
     }
 
+    private void validateBeforeUpdateTask(UpdateTaskRequest request, TaskEntity existing) {
+        handleUpdateStatus(request, existing);
+        handleUpdateAssign(request, existing);
+    }
+
+    private void handleUpdateAssign(UpdateTaskRequest request, TaskEntity existing) {
+        if (ObjectUtils.isNotEmpty(request.getAssigneeId()) && !request.getAssigneeId().equals(existing.getAssignee().getId())) {
+            handleValidateRole(existing);
+        }
+    }
+
     private void handleUpdateStatus(UpdateTaskRequest request, TaskEntity existing) {
         if (ObjectUtils.isNotEmpty(request.getStatus()) && !request.getStatus().equalsIgnoreCase(existing.getStatus())) {
-            Long currentUserId = null;
-            try {
-                currentUserId = SecurityUtils.getCurrentUserId();
-            } catch (Exception ignored) {
-            }
+            handleValidateRole(existing);
+        }
+    }
 
-            Authentication auth = validateAuthen();
+    private void handleValidateRole(TaskEntity existing) {
+        Long currentUserId = null;
+        try {
+            currentUserId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+        }
 
-            boolean isPM = handleValidateRole(existing, auth, currentUserId);
+        Authentication auth = validateAuthen();
 
-            boolean isAssignee = existing.getAssignee() != null
-                    && existing.getAssignee().getId().equals(currentUserId);
+        boolean isPM = handleValidateRole(existing, auth, currentUserId);
 
-            if (!isPM && !isAssignee) {
-                throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
-            }
+        boolean isAssignee = existing.getAssignee() != null
+                && existing.getAssignee().getId().equals(currentUserId);
+
+        if (!isPM && !isAssignee) {
+            throw new ForbiddenException(INVALID_UPDATE_TASK_STATUS);
         }
     }
 
