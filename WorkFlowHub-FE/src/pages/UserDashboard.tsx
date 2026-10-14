@@ -188,6 +188,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
   // 1. Load projects list
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!user?.id) return;
       setLoadingProjects(true);
       try {
         const remoteProjects = await ProjectService.getMyProjects();

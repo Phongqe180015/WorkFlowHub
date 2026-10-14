@@ -78,7 +78,8 @@ export class ApiClient {
 
     if (!response.ok) {
       // 401 Unauthorized Interceptor: auto-clear session and dispatch event if authenticated session expired
-      if (response.status === 401 && !cleanEndpoint.includes('/auth/login') && !cleanEndpoint.includes('/auth/register')) {
+      // Do NOT trigger on any /auth/ endpoints (login, register, logout, health, refresh-token) to prevent infinite loops
+      if (response.status === 401 && !cleanEndpoint.startsWith('/auth/')) {
         TokenStorage.clear();
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('workflowhub:auth_expired', {

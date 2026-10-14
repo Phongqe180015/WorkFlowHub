@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User } from '../types';
 import { AuthService } from '../services/api';
 import { TokenStorage } from '../utils/tokenStorage';
@@ -24,30 +24,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // 15 minutes of inactivity before auto-logout
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
+function parseInitialOAuthRedirect(): { token: string; user: User; refreshToken?: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token');
+    const userParam = params.get('user');
+    const refreshTokenParam = params.get('refreshToken');
+
+    if (tokenParam && userParam) {
+      const parsedUser = JSON.parse(decodeURIComponent(userParam));
+      // Store synchronously right now so any subsequent call to TokenStorage in this render or children has the token
+      TokenStorage.saveAuth(tokenParam, parsedUser, refreshTokenParam, false);
+      if (refreshTokenParam) {
+        sessionStorage.setItem('workflowhub_refresh_token', refreshTokenParam);
+      }
+      // Clean query params from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return { token: tokenParam, user: parsedUser, refreshToken: refreshTokenParam || undefined };
+    }
+  } catch (err) {
+    console.error('Failed to parse OAuth redirect params:', err);
+  }
+  return null;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Synchronously parse and store OAuth parameters from Google redirect before initial state evaluation
+  const [initialOAuth] = useState(() => parseInitialOAuthRedirect());
+
   const [token, setToken] = useState<string | null>(() => {
-    // Reads from sessionStorage or localStorage, automatically checks JWT 'exp'
+    if (initialOAuth?.token) return initialOAuth.token;
     return TokenStorage.getToken();
   });
 
   const [user, setUser] = useState<User | null>(() => {
+    if (initialOAuth?.user) return initialOAuth.user;
     const validToken = TokenStorage.getToken();
     if (!validToken) return null;
     return TokenStorage.getUser<User>();
   });
 
   const [currentRole, setCurrentRole] = useState<RoleType>(() => {
-    const validToken = TokenStorage.getToken();
-    if (!validToken) return 'USER';
-
+    const activeUser = initialOAuth?.user || TokenStorage.getUser<User>();
+    if (activeUser) {
+      const rawRole = (activeUser.roleName || (activeUser as any).role || 'USER').toUpperCase();
+      return rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
+    }
     const savedRole = TokenStorage.getRole();
     if (savedRole) {
       return savedRole as RoleType;
-    }
-    const savedUser = TokenStorage.getUser<User>();
-    if (savedUser) {
-      const rawRole = (savedUser.roleName || (savedUser as any).role || 'USER').toUpperCase();
-      return rawRole === 'ADMIN' ? 'ADMIN' : 'USER';
     }
     return 'USER';
   });
@@ -58,7 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSessionExpiredMessage(null);
   }, []);
 
+  const isLoggingOutRef = useRef(false);
+
   const logout = useCallback(async (reason?: string) => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
     try {
       await AuthService.logout();
     } catch (err) {
@@ -71,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (reason) {
         setSessionExpiredMessage(reason);
       }
+      isLoggingOutRef.current = false;
     }
   }, []);
 
@@ -96,28 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('workflowhub:auth_expired', handleAuthExpired);
     };
   }, [logout]);
-
-  // Handle OAuth Redirect URL parameters
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tokenParam = params.get('token');
-    const refreshTokenParam = params.get('refreshToken');
-    const userParam = params.get('user');
-
-    if (tokenParam && userParam) {
-      try {
-        const parsedUser = JSON.parse(decodeURIComponent(userParam));
-        // Default OAuth redirect: session storage (no permanent persistence on reboot)
-        login(tokenParam, parsedUser, false);
-        if (refreshTokenParam) {
-          sessionStorage.setItem('workflowhub_refresh_token', refreshTokenParam);
-        }
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (err) {
-        console.error('Failed to parse OAuth redirect params:', err);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     TokenStorage.saveRole(currentRole);
