@@ -12,4 +12,10 @@ public class MessageConstants {
     public static final String PASSWORD_CONFIRMATION_DOES_NOT_MATCH = "Password confirmation does not match";
     public static final String INVALID_OR_EXPIRED_REFRESH_TOKEN = "Invalid or expired refresh token";
     public static final String USER_NOT_FOUND_FOR_REFRESH_TOKEN = "User not found for refresh token";
+    public static final String OK = "OK";
+    public static final String BACKEND_RUN_SUCCESSFUL = "Backend service is awake and healthy";
+    public static final String LOGIN_SUCCESSFUL = "Login successful";
+    public static final String LOGOUT_SUCCESSFUL = "Logout successful";
+    public static final String PASSWORD_CHANGED_SUCCESSFULLY = "Password changed successfully";
+    public static final String TOKEN_REFRESHED_SUCCESSFULLY = "Token refreshed successfully";
 }

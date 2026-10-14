@@ -104,6 +104,7 @@ public class SecurityConfig {
                 ).permitAll()
                 // Public auth endpoints
                 .requestMatchers(
+                    AppConstants.API_PREFIX + ApiConstants.AUTH + "/health",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/login",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/login-google",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/**",
