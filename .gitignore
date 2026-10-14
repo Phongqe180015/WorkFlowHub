@@ -49,3 +49,4 @@ build/
 .settings/
 .DS_Store
 Thumbs.db
+WorkFlowHub-BE/WorkFlowHub/document/WorkFlowHub_Redis_Kafka_Design.md
