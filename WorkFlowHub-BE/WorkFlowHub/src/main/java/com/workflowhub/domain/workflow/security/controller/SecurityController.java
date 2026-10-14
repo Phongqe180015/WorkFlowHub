@@ -32,17 +32,26 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import java.io.IOException;
 
+import static com.workflowhub.common.constant.MessageConstants.BACKEND_RUN_SUCCESSFUL;
+import static com.workflowhub.common.constant.MessageConstants.LOGIN_SUCCESSFUL;
+import static com.workflowhub.common.constant.MessageConstants.LOGOUT_SUCCESSFUL;
+import static com.workflowhub.common.constant.MessageConstants.OK;
+import static com.workflowhub.common.constant.MessageConstants.PASSWORD_CHANGED_SUCCESSFULLY;
+import static com.workflowhub.common.constant.MessageConstants.TOKEN_REFRESHED_SUCCESSFULLY;
+
 @RestController
 @RequestMapping(AppConstants.API_PREFIX + ApiConstants.AUTH)
 @RequiredArgsConstructor
 public class SecurityController extends BaseController {
 
-    public static final String LOGIN_SUCCESSFUL = "Login successful";
-    public static final String LOGOUT_SUCCESSFUL = "Logout successful";
-    public static final String PASSWORD_CHANGED_SUCCESSFULLY = "Password changed successfully";
-    public static final String TOKEN_REFRESHED_SUCCESSFULLY = "Token refreshed successfully";
     private final ISecurityService securityService;
     private final IUsersService usersService;
+
+    // Health check endpoint for wake-up check and container liveness
+    @GetMapping("/health")
+    public ApiResponse<String> checkHealth() {
+        return success(OK, BACKEND_RUN_SUCCESSFUL);
+    }
 
     // login
     @PostMapping("/login")
