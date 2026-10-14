@@ -159,6 +159,65 @@ export const AuthService = {
   },
 
   /**
+   * Ping backend to check if the server is awake and ready
+   * @param timeoutMs Timeout in milliseconds per attempt
+   * @param signal Optional AbortSignal
+   */
+  async checkHealth(timeoutMs = 5000, signal?: AbortSignal): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      if (signal) {
+        signal.addEventListener('abort', () => controller.abort(), { once: true });
+      }
+
+      const res = await fetch(`${BASE_URL}/auth/health`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      // Status < 500 means Spring Boot backend is active and replying (200 OK or 4xx).
+      // Render 502/503/504 edge errors have status >= 500 or throw CORS/network exceptions.
+      return res.status < 500;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Poll backend until awake or timed out
+   * @param onProgress Callback to notify elapsed seconds
+   * @param maxWaitSec Maximum wait time in seconds (default 60s)
+   * @param signal Optional AbortSignal
+   */
+  async waitForServerWakeUp(
+    onProgress?: (elapsedSec: number) => void,
+    maxWaitSec = 60,
+    signal?: AbortSignal
+  ): Promise<boolean> {
+    const startTime = Date.now();
+    const intervalMs = 2500;
+
+    while (Date.now() - startTime < maxWaitSec * 1000) {
+      if (signal?.aborted) return false;
+
+      const isAlive = await this.checkHealth(5000, signal);
+      if (isAlive) return true;
+
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      onProgress?.(elapsed);
+
+      // Delay before next check
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    return false;
+  },
+
+  /**
    * GET /api/v1/auth/google/login URL for OAuth Server Redirect Flow
    */
   getGoogleLoginUrl(): string {
