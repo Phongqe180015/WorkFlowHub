@@ -109,7 +109,8 @@ public class SecurityConfig {
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/login-google",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/google/**",
                     AppConstants.API_PREFIX + ApiConstants.AUTH + "/register",
-                    AppConstants.API_PREFIX + ApiConstants.AUTH + "/refresh-token"
+                    AppConstants.API_PREFIX + ApiConstants.AUTH + "/refresh-token",
+                    AppConstants.API_PREFIX + ApiConstants.AUTH + "/logout"
                 ).permitAll()
                 // All other requests require authentication
                 .anyRequest().authenticated()
