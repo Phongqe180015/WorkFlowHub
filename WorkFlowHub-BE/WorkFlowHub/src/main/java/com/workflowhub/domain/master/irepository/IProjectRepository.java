@@ -20,4 +20,6 @@ public interface IProjectRepository extends BaseRepository<ProjectEntity, Long> 
                    )
     """)
     Page<ProjectEntity> findProjectsByUserId(@Param("userId") Long currentUserId, Pageable pageable);
+
+    Long countByOwner_Id(Long ownerId);
 }

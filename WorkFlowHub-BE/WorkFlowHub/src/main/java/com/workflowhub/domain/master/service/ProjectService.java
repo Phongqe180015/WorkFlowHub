@@ -1,5 +1,6 @@
 package com.workflowhub.domain.master.service;
 
+import com.workflowhub.common.exception.BadRequestException;
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
 import com.workflowhub.common.util.SecurityUtils;
@@ -24,6 +25,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_CREATE_PROJECT;
 
 @Service
 @RequiredArgsConstructor
@@ -60,13 +65,23 @@ public class ProjectService implements IProjectService {
     @Override
     @Transactional
     public ProjectResponse createProject(CreateProjectRequest request) {
+
+        Long countProjectByOwner = repository.countByOwner_Id(request.getOwnerId());
+        if(countProjectByOwner > 5) {
+            throw new BadRequestException(INVALID_CREATE_PROJECT);
+        }
+
         ProjectEntity entity = projectMapper.toEntity(request);
         String roleName = RoleEnums.PROJECT_MANAGER.getRoleName();
-        RoleEntity roleEntity = roleRepository.findByName(roleName)
-                .orElseThrow(() -> NotFoundException.of(roleName, null));
+        RoleEntity roleEntity = validateRoleName(roleName);
         ProjectEntity saved = repository.save(entity);
         projectMemberService.create(new CreateProjectMemberRequest(saved.getId(), saved.getOwner().getId(), roleEntity.getId()));
         return projectMapper.toResponse(saved);
+    }
+
+    private RoleEntity validateRoleName(String roleName) {
+        return roleRepository.findByName(roleName)
+                .orElseThrow(() -> NotFoundException.of(roleName, null));
     }
 
     @Override
