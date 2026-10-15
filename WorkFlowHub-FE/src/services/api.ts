@@ -643,3 +643,43 @@ export const ActivityLogService = {
   },
 };
 
+export interface UserDashboardData {
+  userId: number;
+  totalProjects: number;
+  totalAssignedTasks: number;
+  overdueTasks: number;
+  tasksByStatus: Record<string, number>;
+}
+
+export interface ProjectDashboardData {
+  projectId: number;
+  projectName: string;
+  projectDescription: string;
+  ownerName: string | null;
+  totalMembers: number;
+  totalTasks: number;
+  completedTasks: number;
+  completionRate: number;
+  overdueTasks: number;
+  activeSprintName: string | null;
+  tasksByStatus: Record<string, number>;
+}
+
+export const DashboardService = {
+  /**
+   * GET /api/v1/dashboard/user
+   */
+  async getUserDashboard(): Promise<UserDashboardData> {
+    const res = await ApiClient.get<ApiResponse<UserDashboardData>>('/dashboard/user');
+    return res.data;
+  },
+
+  /**
+   * GET /api/v1/dashboard/project/{projectId}
+   */
+  async getProjectDashboard(projectId: number | string): Promise<ProjectDashboardData> {
+    const res = await ApiClient.get<ApiResponse<ProjectDashboardData>>(`/dashboard/project/${projectId}`);
+    return res.data;
+  },
+};
+

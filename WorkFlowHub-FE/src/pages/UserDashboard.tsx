@@ -28,7 +28,7 @@ import { TaskDetailModal } from '../components/TaskDetailModal';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { SubtaskFormModal } from '../components/SubtaskFormModal';
 import { ErrorModal } from '../components/ErrorModal';
-import { ProjectService, TaskService, ActivityLogService, ProjectMemberService } from '../services/api';
+import { ProjectService, TaskService, ActivityLogService, ProjectMemberService, DashboardService, type UserDashboardData } from '../services/api';
 import { SubtaskService } from '../services/subtaskService';
 import type { Project, Task, ActivityLog, Subtask, ProjectMember } from '../types';
 
@@ -77,6 +77,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
   // Recent activities (Real data from backend)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // Cached Dashboard Metrics (From Redis via GET /api/v1/dashboard/user)
+  const [dashboardStats, setDashboardStats] = useState<UserDashboardData | null>(null);
 
   // Modals: Detail, Edit Task, Subtask Form
   const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
@@ -156,6 +159,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       await TaskService.deleteTask(taskId);
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setIsDetailModalOpen(false);
+      loadDashboardStats();
     } catch (err) {
       console.warn('Error deleting task:', err);
     }
@@ -177,6 +181,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     if (selectedDetailTask?.id === updatedTask.id) {
       setSelectedDetailTask(updatedTask);
     }
+    loadDashboardStats();
   };
 
   const sidebarItems = [
@@ -235,7 +240,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     if (user?.id) {
       loadUserTasks();
     }
-  }, [user?.id, projectsList]);
+  }, [user?.id]);
 
   const loadUserTasks = async () => {
     if (!user?.id) return;
@@ -255,6 +260,25 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       setLoadingTasks(false);
     }
   };
+
+  // Load Cached Dashboard Metrics from Redis
+  const loadDashboardStats = async () => {
+    if (!user?.id) return;
+    try {
+      const stats = await DashboardService.getUserDashboard();
+      if (stats) {
+        setDashboardStats(stats);
+      }
+    } catch (err) {
+      console.warn('Could not load cached dashboard metrics:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      loadDashboardStats();
+    }
+  }, [user?.id]);
 
   // 3. Load recent activities
   useEffect(() => {
@@ -358,6 +382,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     // Sync to backend API
     try {
       await TaskService.updateTask(taskId, { status: nextStatus });
+      loadDashboardStats();
     } catch (err: any) {
       console.warn('Error updating task status on server:', err);
       // Revert back
@@ -401,6 +426,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     );
     try {
       await TaskService.updateTask(taskId, { status: newStatus });
+      loadDashboardStats();
     } catch (err: any) {
       console.warn('Error updating status:', err);
       // Revert back
@@ -436,6 +462,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       });
       setTasks((prev) => [newTask, ...prev]);
       setNewTaskTitle('');
+      loadDashboardStats();
     } catch (err: any) {
       console.error('Error creating new task:', err);
       alert(err.message || 'Unable to create task. Please try again!');
@@ -458,9 +485,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     return matchFilter && matchSearch;
   });
 
-  const activeTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'IN_PROGRESS').length;
-  const todoTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'TO_DO').length;
-  const doneTasksCount = tasks.filter((t) => normalizeStatus(t.status) === 'DONE').length;
+  const totalTasksDisplay = dashboardStats ? dashboardStats.totalAssignedTasks : tasks.length;
+  const activeTasksCount =
+    dashboardStats?.tasksByStatus?.['in_progress'] ??
+    dashboardStats?.tasksByStatus?.['IN_PROGRESS'] ??
+    tasks.filter((t) => normalizeStatus(t.status) === 'IN_PROGRESS').length;
+  const todoTasksCount =
+    dashboardStats?.tasksByStatus?.['pending'] ??
+    dashboardStats?.tasksByStatus?.['TO_DO'] ??
+    tasks.filter((t) => normalizeStatus(t.status) === 'TO_DO').length;
+  const doneTasksCount =
+    dashboardStats?.tasksByStatus?.['completed'] ??
+    dashboardStats?.tasksByStatus?.['DONE'] ??
+    tasks.filter((t) => normalizeStatus(t.status) === 'DONE').length;
+  const totalProjectsDisplay = dashboardStats ? dashboardStats.totalProjects : projectsList.length;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -496,7 +534,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             </div>
             <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-center">
               <div className="text-[11px] text-emerald-100">Joined Projects</div>
-              <div className="text-sm font-bold text-white">{projectsList.length}</div>
+              <div className="text-sm font-bold text-white">{totalProjectsDisplay}</div>
             </div>
           </div>
         </div>
@@ -524,7 +562,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{tasks.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{totalTasksDisplay}</div>
             <div className="text-[11px] text-gray-500 mt-1 font-medium">Total Tasks</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
