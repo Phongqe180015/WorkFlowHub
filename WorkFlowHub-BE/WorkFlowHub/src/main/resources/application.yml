@@ -76,6 +76,26 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: 2000ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000ms
+      cache-null-values: false
+
 # ============================================================
 # SERVER
 # ============================================================
