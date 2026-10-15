@@ -9,5 +9,7 @@ services:
       - '5432'
   redis:
     image: 'redis:latest'
+    container_name: workflowhub-redis
     ports:
-      - '6379'
+      - '6379:6379'
+    restart: always

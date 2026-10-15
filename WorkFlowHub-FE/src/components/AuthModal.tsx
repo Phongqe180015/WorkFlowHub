@@ -281,7 +281,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="text-xs text-amber-800">
               <p className="font-semibold">{googleStatusText || 'Connecting to server...'}</p>
               <p className="text-[11px] text-amber-600 mt-0.5">
-                Backend free tier spins down when inactive. Please hold on while it wakes up — you will not see an error page.
+                Loading server
               </p>
             </div>
           </div>

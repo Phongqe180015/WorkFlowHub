@@ -1,7 +1,7 @@
 package com.workflowhub.domain.workflow.main.service;
 
+import com.workflowhub.common.config.RedisConfig;
 import com.workflowhub.common.enums.RoleEnums;
-import com.workflowhub.common.exception.BadRequestException;
 import com.workflowhub.common.exception.ForbiddenException;
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.exception.UnauthorizedException;
@@ -18,6 +18,9 @@ import com.workflowhub.domain.workflow.main.iservice.ITaskService;
 import com.workflowhub.domain.workflow.main.mapper.ITaskMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,6 +52,7 @@ public class TaskService implements ITaskService {
     private final ITaskRepository repository;
     private final ITaskMapper taskMapper;
     private final IProjectMemberRepository projectMemberRepository;
+    private final CacheManager cacheManager;
 
     @Override
     @Transactional(readOnly = true)
@@ -73,6 +77,10 @@ public class TaskService implements ITaskService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#request.assigneeId", condition = "#request.assigneeId != null"),
+            @CacheEvict(value = RedisConfig.CACHE_PROJECT_DASHBOARD, key = "#request.projectId", condition = "#request.projectId != null")
+    })
     public TaskResponse createTask(CreateTaskRequest request) {
         TaskEntity entity = taskMapper.toEntity(request);
         if (ObjectUtils.isEmpty(entity.getIsDeleted())) {
@@ -87,6 +95,11 @@ public class TaskService implements ITaskService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#existing.assignee.id", condition = "#existing.assignee != null"),
+            @CacheEvict(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#request.assigneeId", condition = "#request.assigneeId != null"),
+            @CacheEvict(value = RedisConfig.CACHE_PROJECT_DASHBOARD, key = "#existing.project.id")
+    })
     public TaskResponse updateTask(Long id, UpdateTaskRequest request) {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
@@ -164,6 +177,18 @@ public class TaskService implements ITaskService {
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
         existing.setIsDeleted(true);
         repository.save(existing);
+
+        //Delete cache of user deleted
+        if(ObjectUtils.isNotEmpty(existing.getAssignee())){
+            cacheManager.getCache(RedisConfig.CACHE_USER_DASHBOARD)
+                    .evict(existing.getAssignee().getId());
+        }
+
+        //Delete cache of project deleted
+        if(ObjectUtils.isNotEmpty(existing.getProject())){
+            cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD)
+                    .evict(existing.getProject().getId());
+        }
     }
 
     @Override
