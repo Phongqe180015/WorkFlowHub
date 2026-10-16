@@ -34,18 +34,22 @@ public class TaskEventProducer {
                 .build();
         log.info("==> [KAFKA PRODUCER] Publishing TaskAssigned event to topic '{}' for Task ID: {}",
                 KafkaConfig.TASK_EVENTS_TOPIC, taskId);
-        // Publish events to Kafka using `taskId` as the key (ensuring ordering for the same task)
-        kafkaTemplate.send(KafkaConfig.TASK_EVENTS_TOPIC, String.valueOf(taskId), event)
-                .whenComplete((result, ex) -> {
-                    if (ObjectUtils.isNotEmpty(ex)) {
-                        log.error("==> [KAFKA PRODUCER] Failed to publish TaskAssigned event for Task ID: {}", taskId, ex);
-                    } else {
-                        log.info("==> [KAFKA PRODUCER] Successfully published TaskAssigned event for Task ID: {} to partition {} with offset {}",
-                                taskId,
-                                result.getRecordMetadata().partition(),
-                                result.getRecordMetadata().offset());
-                    }
-                });
+        try {
+            // Publish events to Kafka using `taskId` as the key (ensuring ordering for the same task)
+            kafkaTemplate.send(KafkaConfig.TASK_EVENTS_TOPIC, String.valueOf(taskId), event)
+                    .whenComplete((result, ex) -> {
+                        if (ObjectUtils.isNotEmpty(ex)) {
+                            log.error("==> [KAFKA PRODUCER] Failed to publish TaskAssigned event for Task ID: {}", taskId, ex);
+                        } else {
+                            log.info("==> [KAFKA PRODUCER] Successfully published TaskAssigned event for Task ID: {} to partition {} with offset {}",
+                                    taskId,
+                                    result.getRecordMetadata().partition(),
+                                    result.getRecordMetadata().offset());
+                        }
+                    });
+        } catch (Exception ex) {
+            log.error("==> [KAFKA PRODUCER] Synchronous error when publishing TaskAssigned event for Task ID {}: {}", taskId, ex.getMessage());
+        }
     }
 
     public void sendSubtaskAssignedEvent(Long subtaskId, String subtaskTitle, Long taskId, String taskTitle, Long projectId, Long assigneeId, Long actorId) {
@@ -64,17 +68,21 @@ public class TaskEventProducer {
                 .build();
         log.info("==> [KAFKA PRODUCER] Publishing SubtaskAssigned event to topic '{}' for Subtask ID: {}, Task ID: {}",
                 KafkaConfig.TASK_EVENTS_TOPIC, subtaskId, taskId);
-        kafkaTemplate.send(KafkaConfig.TASK_EVENTS_TOPIC, String.valueOf(taskId), event)
-                .whenComplete((result, ex) -> {
-                    if (ObjectUtils.isNotEmpty(ex)) {
-                        log.error("==> [KAFKA PRODUCER] Failed to publish SubtaskAssigned event for Subtask ID: {}", subtaskId, ex);
-                    } else {
-                        log.info("==> [KAFKA PRODUCER] Successfully published SubtaskAssigned event for Subtask ID: {} to partition {} with offset {}",
-                                subtaskId,
-                                result.getRecordMetadata().partition(),
-                                result.getRecordMetadata().offset());
-                    }
-                });
+        try {
+            kafkaTemplate.send(KafkaConfig.TASK_EVENTS_TOPIC, String.valueOf(taskId), event)
+                    .whenComplete((result, ex) -> {
+                        if (ObjectUtils.isNotEmpty(ex)) {
+                            log.error("==> [KAFKA PRODUCER] Failed to publish SubtaskAssigned event for Subtask ID: {}", subtaskId, ex);
+                        } else {
+                            log.info("==> [KAFKA PRODUCER] Successfully published SubtaskAssigned event for Subtask ID: {} to partition {} with offset {}",
+                                    subtaskId,
+                                    result.getRecordMetadata().partition(),
+                                    result.getRecordMetadata().offset());
+                        }
+                    });
+        } catch (Exception ex) {
+            log.error("==> [KAFKA PRODUCER] Synchronous error when publishing SubtaskAssigned event for Subtask ID {}: {}", subtaskId, ex.getMessage());
+        }
     }
 
 }
