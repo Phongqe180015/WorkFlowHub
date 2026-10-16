@@ -12,6 +12,7 @@ import com.workflowhub.domain.workflow.main.dto.request.UpdateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.response.TaskResponse;
 import com.workflowhub.domain.workflow.main.entity.TaskEntity;
 import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.main.event.producer.TaskEventProducer;
 import com.workflowhub.domain.workflow.main.irepository.IProjectMemberRepository;
 import com.workflowhub.domain.workflow.main.irepository.ITaskRepository;
 import com.workflowhub.domain.workflow.main.iservice.ITaskService;
@@ -53,6 +54,7 @@ public class TaskService implements ITaskService {
     private final ITaskMapper taskMapper;
     private final IProjectMemberRepository projectMemberRepository;
     private final CacheManager cacheManager;
+    private final TaskEventProducer taskEventProducer;
 
     @Override
     @Transactional(readOnly = true)
@@ -90,7 +92,30 @@ public class TaskService implements ITaskService {
             entity.setTaskCode("TASK-" + (System.currentTimeMillis() % 100000));
         }
         TaskEntity saved = repository.save(entity);
+        //Notify
+        handleNotificationForUserCreate(saved);
         return taskMapper.toResponse(saved);
+    }
+
+    private void handleNotificationForUserCreate(TaskEntity saved) {
+        if (ObjectUtils.isNotEmpty(saved.getAssignee())) {
+            publishAnEvent(saved);
+        }
+    }
+
+    private void publishAnEvent(TaskEntity saved) {
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+        }
+        taskEventProducer.sendTaskAssignedEvent(
+                saved.getId(),
+                saved.getTitle(),
+                saved.getProject().getId(),
+                saved.getAssignee().getId(),
+                actorId
+        );
     }
 
     @Override
@@ -108,7 +133,16 @@ public class TaskService implements ITaskService {
 
         taskMapper.updateEntityFromRequest(request, existing);
         TaskEntity saved = repository.save(existing);
+        //Notify
+        publishWhenUpdate(saved, existing);
         return taskMapper.toResponse(saved);
+    }
+
+    private void publishWhenUpdate(TaskEntity saved, TaskEntity existing) {
+        if (ObjectUtils.isNotEmpty(saved.getAssignee()) &&
+                (ObjectUtils.isEmpty(existing.getAssignee()) || !existing.getAssignee().getId().equals(saved.getAssignee().getId()))) {
+            publishAnEvent(saved);
+        }
     }
 
     private void validateBeforeUpdateTask(UpdateTaskRequest request, TaskEntity existing) {

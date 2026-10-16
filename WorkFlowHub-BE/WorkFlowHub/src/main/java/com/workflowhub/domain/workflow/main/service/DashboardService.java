@@ -37,7 +37,7 @@ public class DashboardService implements IDashboardService {
     @Cacheable(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#userId")
     public UserDashboardResponse getUserDashboard(Long userId) {
 
-        log.info("==> [CACHE MISS] Truy vấn PostgreSQL để tính toán Dashboard cho User ID: {}", userId);
+        log.info("==> [CACHE MISS] PostgreSQL query for calculating dashboard data for a User ID: {}", userId);
 
         long totalProjects = projectMemberRepository.countProjectsByUserId(userId);
         long totalTasks = taskRepository.countAssignedTasks(userId);
@@ -63,7 +63,7 @@ public class DashboardService implements IDashboardService {
     @Transactional(readOnly = true)
     @Cacheable(value = RedisConfig.CACHE_PROJECT_DASHBOARD, key = "#projectId")
     public ProjectDashboardResponse getProjectDashboard(Long projectId) {
-        log.info("==> [CACHE MISS] Truy vấn PostgreSQL để tính toán Dashboard cho Project ID: {}", projectId);
+        log.info("==> [CACHE MISS] PostgreSQL query for calculating dashboard data for a Project ID: {}", projectId);
 
         ProjectEntity project = projectRepository.findById(projectId)
                 .orElseThrow(() -> NotFoundException.of("Project", projectId));

@@ -12,8 +12,10 @@ import com.workflowhub.domain.workflow.main.dto.response.SubtaskResponse;
 import com.workflowhub.domain.workflow.main.entity.SubtaskEntity;
 import com.workflowhub.domain.workflow.main.entity.TaskEntity;
 import com.workflowhub.domain.workflow.main.entity.key.ProjectMemberId;
+import com.workflowhub.domain.workflow.main.event.producer.TaskEventProducer;
 import com.workflowhub.domain.workflow.main.irepository.IProjectMemberRepository;
 import com.workflowhub.domain.workflow.main.irepository.ISubtaskRepository;
+import com.workflowhub.domain.workflow.main.irepository.ITaskRepository;
 import com.workflowhub.domain.workflow.main.iservice.ISubtaskService;
 import com.workflowhub.domain.workflow.main.mapper.ISubtaskMapper;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,8 @@ public class SubtaskService implements ISubtaskService {
     private final ISubtaskRepository repository;
     private final ISubtaskMapper mapper;
     private final IProjectMemberRepository projectMemberRepository;
+    private final ITaskRepository taskRepository;
+    private final TaskEventProducer taskEventProducer;
 
     @Override
     @Transactional(readOnly = true)
@@ -80,7 +84,15 @@ public class SubtaskService implements ISubtaskService {
         if (entity.getIsCompleted() == null) {
             entity.setIsCompleted(false);
         }
-        return mapper.toResponse(repository.save(entity));
+        SubtaskEntity savedEntity = repository.save(entity);
+        handleNotificationForSubtaskCreate(savedEntity, request.getTaskId());
+        return mapper.toResponse(savedEntity);
+    }
+
+    private void handleNotificationForSubtaskCreate(SubtaskEntity saved, Long taskId) {
+        if (ObjectUtils.isNotEmpty(saved.getAssignee())) {
+            publishSubtaskEvent(saved, taskId);
+        }
     }
 
     @Override
@@ -89,10 +101,60 @@ public class SubtaskService implements ISubtaskService {
         SubtaskEntity entity = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(SUBTASK, id));
 
+        Long oldAssigneeId = (entity.getAssignee() != null) ? entity.getAssignee().getId() : null;
+
         validateBeforeUpdate(request, entity);
 
         mapper.updateEntityFromRequest(request, entity);
-        return mapper.toResponse(repository.save(entity));
+        SubtaskEntity savedEntity = repository.save(entity);
+        publishWhenSubtaskUpdate(savedEntity, oldAssigneeId);
+        return mapper.toResponse(savedEntity);
+    }
+
+    private void publishWhenSubtaskUpdate(SubtaskEntity saved, Long oldAssigneeId) {
+        if (ObjectUtils.isNotEmpty(saved.getAssignee()) &&
+                (oldAssigneeId == null || !oldAssigneeId.equals(saved.getAssignee().getId()))) {
+            Long taskId = (saved.getTask() != null) ? saved.getTask().getId() : null;
+            publishSubtaskEvent(saved, taskId);
+        }
+    }
+
+    private void publishSubtaskEvent(SubtaskEntity saved, Long taskId) {
+        if (saved.getAssignee() == null || taskId == null) {
+            return;
+        }
+
+        TaskEntity task = taskRepository.findById(taskId).orElse(null);
+        if (task == null) {
+            return;
+        }
+
+        Long taskAssigneeId = (task.getAssignee() != null) ? task.getAssignee().getId() : null;
+        Long subtaskAssigneeId = saved.getAssignee().getId();
+
+        // Only allow notifications when the subtask's assignee_id differs from the parent task's assignee_id
+        if (subtaskAssigneeId.equals(taskAssigneeId)) {
+            return;
+        }
+
+        Long actorId = null;
+        try {
+            actorId = SecurityUtils.getCurrentUserId();
+        } catch (Exception ignored) {
+        }
+
+        String taskTitle = (task.getTitle() != null) ? task.getTitle() : "";
+        Long projectId = (task.getProject() != null) ? task.getProject().getId() : null;
+
+        taskEventProducer.sendSubtaskAssignedEvent(
+                saved.getId(),
+                saved.getTitle(),
+                taskId,
+                taskTitle,
+                projectId,
+                subtaskAssigneeId,
+                actorId
+        );
     }
 
     private void validateBeforeUpdate(UpdateSubtaskRequest request, SubtaskEntity entity) {
