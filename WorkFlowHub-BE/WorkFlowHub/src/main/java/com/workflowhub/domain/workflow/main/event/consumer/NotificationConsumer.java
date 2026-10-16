@@ -62,7 +62,8 @@ public class NotificationConsumer {
     }
 
     private void createNotification(TaskAssignedEvent event, boolean isSubtask) {
-        String notifType = isSubtask ? "SUBTASK_ASSIGNED" : "TASK_ASSIGNED";
+        String notifyType = (isSubtask ? "SUBTASK_ASSIGNED" : "TASK_ASSIGNED")
+                + (event.getTaskId() != null ? (":" + event.getTaskId()) : "");
         String notifContent;
         if (isSubtask) {
             if (ObjectUtils.isNotEmpty(event.getTaskTitle()) && !event.getTaskTitle().isBlank()) {
@@ -76,7 +77,7 @@ public class NotificationConsumer {
 
         CreateNotificationRequest notificationRequest = CreateNotificationRequest.builder()
                 .userId(event.getAssigneeId())
-                .type(notifType)
+                .type(notifyType)
                 .content(notifContent)
                 .isRead(false)
                 .build();
