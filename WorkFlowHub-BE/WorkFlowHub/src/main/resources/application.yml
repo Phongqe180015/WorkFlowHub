@@ -107,6 +107,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+        "max.block.ms": 3000
     consumer:
       group-id: ${KAFKA_CONSUMER_GROUP:workflowhub-notification-group}
       auto-offset-reset: earliest
