@@ -223,3 +223,15 @@ export interface NotificationItem {
   time: string;
   initials: string;
 }
+
+export interface AppNotification {
+  id: number;
+  userId: number;
+  userName?: string;
+  type: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+

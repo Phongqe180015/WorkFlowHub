@@ -184,6 +184,65 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
     loadDashboardStats();
   };
 
+  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
+
+  const navigateAndOpenTask = async (taskId: number) => {
+    setActiveTab('myTasks');
+    setTaskFilter('ALL');
+    setSearchQuery('');
+
+    try {
+      const task = await TaskService.getTaskById(taskId);
+      if (task) {
+        handleOpenTaskDetail(task);
+        setHighlightedTaskId(taskId);
+        setTasks((prev) => {
+          if (!prev.some((t) => t.id === task.id)) {
+            return [task, ...prev];
+          }
+          return prev.map((t) => (t.id === task.id ? task : t));
+        });
+        setTimeout(() => {
+          const el = document.getElementById(`task-item-${taskId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+        setTimeout(() => {
+          setHighlightedTaskId((prev) => (prev === taskId ? null : prev));
+        }, 4000);
+      }
+    } catch (err) {
+      console.warn('Failed to open task from notification:', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleOpenTaskEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ taskId: number }>;
+      if (customEvent.detail?.taskId) {
+        navigateAndOpenTask(customEvent.detail.taskId);
+      }
+    };
+
+    window.addEventListener('workflowhub:open-task', handleOpenTaskEvent);
+
+    const pendingTaskIdStr = sessionStorage.getItem('workflowhub_pending_task_id');
+    if (pendingTaskIdStr) {
+      sessionStorage.removeItem('workflowhub_pending_task_id');
+      const pendingTaskId = parseInt(pendingTaskIdStr, 10);
+      if (!isNaN(pendingTaskId)) {
+        setTimeout(() => {
+          navigateAndOpenTask(pendingTaskId);
+        }, 150);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('workflowhub:open-task', handleOpenTaskEvent);
+    };
+  }, []);
+
   const sidebarItems = [
     { id: 'myTasks', label: 'My Tasks', icon: ListTodo },
     { id: 'myProjects', label: 'My Projects', icon: FolderKanban },
@@ -752,7 +811,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                     return (
                       <div
                         key={task.id}
-                        className="py-3.5 px-2 rounded-xl hover:bg-gray-50/60 transition-colors space-y-2 group"
+                        id={`task-item-${task.id}`}
+                        className={`py-3.5 px-2 rounded-xl transition-all space-y-2 group ${
+                          highlightedTaskId === task.id
+                            ? 'bg-emerald-50 ring-2 ring-emerald-500 shadow-sm'
+                            : 'hover:bg-gray-50/60'
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">

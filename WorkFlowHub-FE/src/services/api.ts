@@ -14,7 +14,8 @@ import type {
   CreateTaskPayload,
   CreateSubtaskPayload,
   UpdateSubtaskPayload,
-  ActivityLog
+  ActivityLog,
+  AppNotification
 } from '../types';
 
 export class ApiError extends Error {
@@ -682,4 +683,53 @@ export const DashboardService = {
     return res.data;
   },
 };
+
+export const NotificationService = {
+  /**
+   * GET /api/v1/notifications?search=userId=={userId}&page={page}&size={size}&sort=createdAt,desc
+   */
+  async getMyNotifications(userId: number, page = 0, size = 20): Promise<PageResponse<AppNotification>> {
+    try {
+      const res = await ApiClient.get<ApiResponse<PageResponse<AppNotification>>>(
+        `/notifications?search=userId==${userId}&page=${page}&size=${size}&sort=createdAt,desc`
+      );
+      return res.data || {
+        content: [],
+        pageNumber: 0,
+        pageSize: size,
+        totalElements: 0,
+        totalPages: 0,
+        last: true
+      };
+    } catch (err) {
+      console.warn('Failed to fetch notifications:', err);
+      return {
+        content: [],
+        pageNumber: 0,
+        pageSize: size,
+        totalElements: 0,
+        totalPages: 0,
+        last: true
+      };
+    }
+  },
+
+  /**
+   * PUT /api/v1/notifications/{id}
+   */
+  async markAsRead(id: number): Promise<AppNotification> {
+    const res = await ApiClient.put<ApiResponse<AppNotification>>(`/notifications/${id}`, {
+      isRead: true,
+    });
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/notifications/{id}
+   */
+  async deleteNotification(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/notifications/${id}`);
+  },
+};
+
 

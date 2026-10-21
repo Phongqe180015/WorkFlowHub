@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth, type RoleType } from '../context/AuthContext';
 import { ArrowLeft, Shield, Kanban, Code2, Eye, LogOut, Loader2, User as UserIcon } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 interface DashboardHeaderProps {
   onBackHome: () => void;
@@ -83,8 +84,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
           </div>
         )}
 
-        {/* Actions: User Info, Logout & Back to Home */}
+        {/* Actions: User Info, Notifications, Logout & Back to Home */}
         <div className="flex items-center gap-3 sm:gap-4">
+          <NotificationBell />
+
           {user && (
             <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-700">
               <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[11px] overflow-hidden shrink-0">

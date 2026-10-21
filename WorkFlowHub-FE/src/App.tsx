@@ -44,6 +44,20 @@ const MainApp: React.FC = () => {
     }
   }, [sessionExpiredMessage, isAuthenticated]);
 
+  // Handle open task event from notification bell
+  useEffect(() => {
+    const handleOpenTask = () => {
+      setCurrentPage('dashboard');
+      if (currentRole !== 'USER') {
+        setCurrentRole('USER');
+      }
+    };
+    window.addEventListener('workflowhub:open-task', handleOpenTask);
+    return () => {
+      window.removeEventListener('workflowhub:open-task', handleOpenTask);
+    };
+  }, [currentRole]);
+
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);
     setAuthModalOpen(true);
