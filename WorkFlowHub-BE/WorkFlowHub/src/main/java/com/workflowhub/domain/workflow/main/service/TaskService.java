@@ -120,38 +120,54 @@ public class TaskService implements ITaskService {
 
     @Override
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#existing.assignee.id", condition = "#existing.assignee != null"),
-            @CacheEvict(value = RedisConfig.CACHE_USER_DASHBOARD, key = "#request.assigneeId", condition = "#request.assigneeId != null"),
-            @CacheEvict(value = RedisConfig.CACHE_PROJECT_DASHBOARD, key = "#existing.project.id")
-    })
     public TaskResponse updateTask(Long id, UpdateTaskRequest request) {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
 
         validateBeforeUpdateTask(request, existing);
 
+        Long oldAssigneeId = existing.getAssignee() != null ? existing.getAssignee().getId() : null;
+
         taskMapper.updateEntityFromRequest(request, existing);
         TaskEntity saved = repository.save(existing);
+
+        evictTaskCaches(oldAssigneeId, saved);
         //Notify
-        publishWhenUpdate(saved, existing);
+        publishEvent(saved, oldAssigneeId);
         return taskMapper.toResponse(saved);
     }
 
-    private void publishWhenUpdate(TaskEntity saved, TaskEntity existing) {
-        if (ObjectUtils.isNotEmpty(saved.getAssignee()) &&
-                (ObjectUtils.isEmpty(existing.getAssignee()) || !existing.getAssignee().getId().equals(saved.getAssignee().getId()))) {
+    private void publishEvent(TaskEntity saved, Long oldAssigneeId) {
+        if (saved.getAssignee() != null && (oldAssigneeId == null || !oldAssigneeId.equals(saved.getAssignee().getId()))) {
             publishAnEvent(saved);
         }
     }
 
+    private void evictTaskCaches(Long oldAssigneeId, TaskEntity saved) {
+        if (cacheManager == null) return;
+
+        var userCache = cacheManager.getCache(RedisConfig.CACHE_USER_DASHBOARD);
+        if (ObjectUtils.isEmpty(userCache)) {
+            if (oldAssigneeId != null) {
+                userCache.evict(oldAssigneeId);
+            }
+            if (saved.getAssignee() != null && !saved.getAssignee().getId().equals(oldAssigneeId)) {
+                userCache.evict(saved.getAssignee().getId());
+            }
+        }
+        var projectCache = cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD);
+        if (ObjectUtils.isEmpty(projectCache) && saved.getProject() != null) {
+            projectCache.evict(saved.getProject().getId());
+        }
+    }
     private void validateBeforeUpdateTask(UpdateTaskRequest request, TaskEntity existing) {
         handleUpdateStatus(request, existing);
         handleUpdateAssign(request, existing);
     }
 
     private void handleUpdateAssign(UpdateTaskRequest request, TaskEntity existing) {
-        if (ObjectUtils.isNotEmpty(request.getAssigneeId()) && !request.getAssigneeId().equals(existing.getAssignee().getId())) {
+        if (ObjectUtils.isNotEmpty(request.getAssigneeId()) &&
+                (existing.getAssignee() == null || !request.getAssigneeId().equals(existing.getAssignee().getId()))) {
             handleValidateRole(existing);
         }
     }
