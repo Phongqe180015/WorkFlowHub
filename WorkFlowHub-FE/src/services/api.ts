@@ -96,9 +96,14 @@ export class ApiClient {
         errorCode = errorData.code;
         const rawMsg = errorData.message || errorData.error;
         if (rawMsg) {
-          errorMessage = ERROR_CODE_TRANSLATIONS[rawMsg] || (errorCode && ERROR_CODE_TRANSLATIONS[errorCode]) || rawMsg;
+          // Prioritize specific message from backend. Only translate if rawMsg explicitly has a translation mapping
+          errorMessage = ERROR_CODE_TRANSLATIONS[rawMsg] || rawMsg;
         } else if (errorCode && ERROR_CODE_TRANSLATIONS[errorCode]) {
-          errorMessage = ERROR_CODE_TRANSLATIONS[errorCode];
+          if (cleanEndpoint.startsWith('/auth/') && errorCode === 'UNAUTHORIZED') {
+            errorMessage = 'Invalid email or password. Please try again.';
+          } else {
+            errorMessage = ERROR_CODE_TRANSLATIONS[errorCode];
+          }
         }
       } catch {
         // Body is not json
@@ -566,18 +571,46 @@ export const TaskService = {
   },
 
   /**
-   * GET /api/v1/tasks?search=projectId=={id};isDeleted==true
+   * GET /api/v1/tasks?search=projectId=={id};isDeleted==true;deletedById=={userId}
    */
-  async getTrashTasks(projectId: number): Promise<Task[]> {
+  async getTrashTasks(projectId: number, deletedById?: number): Promise<Task[]> {
     try {
+      // 1. If deletedById is provided, try querying backend with it first
+      if (deletedById) {
+        try {
+          const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
+            `/tasks?search=projectId==${projectId};isDeleted==true;deletedById==${deletedById}&page=0&size=100`
+          );
+          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
+          return list;
+        } catch (err) {
+          // If BE RSQL builder does not support deletedById yet, fall back to base trash query
+          console.warn('Backend does not support deletedById in RSQL yet, falling back to base trash query:', err);
+        }
+      }
+
+      // Base query
       const res = await ApiClient.get<ApiResponse<PageResponse<Task>>>(
         `/tasks?search=projectId==${projectId};isDeleted==true&page=0&size=100`
       );
-      return res.data?.content || (Array.isArray(res.data) ? res.data : []);
+      const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
+
+      // Client-side safeguard: filter only tasks deleted by current user if deletedById is present on task
+      if (deletedById) {
+        return list.filter((t: Task) => t.deletedById === undefined || t.deletedById === null || t.deletedById === deletedById);
+      }
+      return list;
     } catch (err) {
       console.warn(`Failed to fetch trash tasks for projectId=${projectId}:`, err);
       return [];
     }
+  },
+
+  /**
+   * DELETE /api/v1/tasks/projects/{projectId}/trash?all={all}
+   */
+  async emptyTrash(projectId: number, all = false): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/tasks/projects/${projectId}/trash?all=${all}`);
   },
 };
 
