@@ -69,6 +69,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
   const [trashTasks, setTrashTasks] = useState<Task[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadingTrash, setLoadingTrash] = useState(false);
+  const [isClearingTrash, setIsClearingTrash] = useState(false);
 
   // Sprint được chọn để xem chi tiết các Task (Click vào sprint)
   const [selectedSprintForTasks, setSelectedSprintForTasks] = useState<Sprint | null>(null);
@@ -194,12 +195,14 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   const currentProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
 
-  // Check PM permissions
+  // Check PM permissions for current project
+  const currentMember = members.find((m) => m.userId === user?.id);
   const isPM = Boolean(
-    (user?.roleName || user?.role || '').toUpperCase() === 'PROJECT_MANAGER' ||
-    currentRole === 'PROJECT_MANAGER' ||
+    (user?.roleName || user?.role || '').toUpperCase() === 'ADMIN' ||
     (currentProject && currentProject.ownerId === user?.id) ||
-    members.some((m) => m.userId === user?.id && (m.roleName || '').toUpperCase() === 'PROJECT_MANAGER')
+    (currentMember && (currentMember.roleName || '').toUpperCase() === 'PROJECT_MANAGER') ||
+    (currentProject?.currentUserRole && ['PROJECT_MANAGER', 'PM', 'OWNER'].includes(currentProject.currentUserRole.toUpperCase())) ||
+    (!user && currentRole === 'PROJECT_MANAGER')
   );
 
   // Sync when initialProjectId changes
@@ -252,7 +255,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       setTasks([]);
       setSelectedSprintForTasks(null);
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, user?.id]);
 
   const loadProjectDetails = async (projectId: number) => {
     setLoadingDetails(true);
@@ -261,7 +264,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
         SprintService.getSprintsByProjectId(projectId),
         ProjectMemberService.getMembersByProjectId(projectId),
         TaskService.getTasksByProjectId(projectId),
-        TaskService.getTrashTasks(projectId).catch(() => []),
+        TaskService.getTrashTasks(projectId, user?.id).catch(() => []),
       ]);
 
       setSprints(fetchedSprints || []);
@@ -283,7 +286,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     if (!selectedProjectId) return;
     setLoadingTrash(true);
     try {
-      const fetchedTrash = await TaskService.getTrashTasks(selectedProjectId);
+      const fetchedTrash = await TaskService.getTrashTasks(selectedProjectId, user?.id);
       setTrashTasks(fetchedTrash || []);
     } catch (err) {
       console.warn('Error loading trash bin:', err);
@@ -380,7 +383,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
       const deletedTask = tasks.find((t) => t.id === taskId);
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       if (deletedTask) {
-        setTrashTasks((prev) => [{ ...deletedTask, isDeleted: true }, ...prev]);
+        setTrashTasks((prev) => [{ ...deletedTask, isDeleted: true, deletedById: user?.id, deletedByName: user?.name }, ...prev]);
       } else {
         loadTrashTasks();
       }
@@ -427,6 +430,34 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
     }
   };
 
+  const handleEmptyTrash = async () => {
+    if (!selectedProjectId) return;
+    if (trashTasks.length === 0) {
+      showNotification('success', 'Trash bin is already empty.');
+      return;
+    }
+
+    const confirmMessage = isPM
+      ? `This action CANNOT be undone. Are you sure you want to permanently delete all ${trashTasks.length} task(s) in the trash bin?`
+      : `This action CANNOT be undone. Are you sure you want to permanently delete all your task(s) in the trash bin?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsClearingTrash(true);
+    try {
+      await TaskService.emptyTrash(selectedProjectId, isPM);
+      setTrashTasks([]);
+      showNotification('success', 'Trash bin emptied successfully!');
+    } catch (err: any) {
+      console.error('Error emptying trash bin:', err);
+      showNotification('error', err.message || 'Unable to empty trash bin.');
+    } finally {
+      setIsClearingTrash(false);
+    }
+  };
+
   const handleMemberAdded = (newMember: ProjectMember) => {
     setMembers((prev) => [newMember, ...prev]);
     showNotification('success', `Added member "${newMember.userName || 'New'}" with role ${newMember.roleName || 'Member'}!`);
@@ -440,6 +471,10 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
 
   const handleRemoveMember = async (userId: number, userName?: string) => {
     if (!selectedProjectId) return;
+    if (!isPM) {
+      showErrorModal('Only Project Managers (PM) have permission to remove members from the project.', 'Access Denied', 'FORBIDDEN');
+      return;
+    }
     if (userId === user?.id) {
       alert('You are the project creator (Project Manager) and cannot remove yourself.');
       return;
@@ -1334,7 +1369,9 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {members.map((member) => {
-                      const isOwner = member.roleName === 'PROJECT_MANAGER' || member.userId === user?.id;
+                      const isTargetPMOrSelf = (member.roleName || '').toUpperCase() === 'PROJECT_MANAGER' || 
+                                               member.userId === user?.id || 
+                                               (currentProject && member.userId === currentProject.ownerId);
                       return (
                         <div
                           key={`${member.projectId}-${member.userId}`}
@@ -1377,7 +1414,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                               <span>{member.roleName || 'MEMBER'}</span>
                             </span>
 
-                            {!isOwner && (
+                            {isPM && !isTargetPMOrSelf && (
                               <button
                                 onClick={() => handleRemoveMember(member.userId, member.userName)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
@@ -2051,18 +2088,36 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Soft-deleted tasks in this project. You can restore them to active status or permanently delete them.
+                    Tasks deleted by you in this project. You can restore them to active status or permanently delete them.
                   </p>
                 </div>
 
-                <button
-                  onClick={loadTrashTasks}
-                  disabled={loadingTrash}
-                  className="px-3.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-gray-200 shrink-0"
-                >
-                  <RotateCcw size={14} className={loadingTrash ? 'animate-spin' : ''} />
-                  <span>Refresh Trash</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {trashTasks.length > 0 && (
+                    <button
+                      onClick={handleEmptyTrash}
+                      disabled={isClearingTrash || loadingTrash}
+                      className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-red-200"
+                      title="Permanently delete all tasks in trash bin"
+                    >
+                      {isClearingTrash ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                      <span>{isClearingTrash ? 'Emptying...' : 'Empty Trash'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={loadTrashTasks}
+                    disabled={loadingTrash || isClearingTrash}
+                    className="px-3.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-gray-200"
+                  >
+                    <RotateCcw size={14} className={loadingTrash ? 'animate-spin' : ''} />
+                    <span>Refresh Trash</span>
+                  </button>
+                </div>
               </div>
 
               {loadingTrash ? (
@@ -2075,7 +2130,7 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                   <Trash2 size={36} className="mx-auto text-gray-300" />
                   <p className="text-sm font-medium text-gray-600">Trash Bin is Empty</p>
                   <p className="text-gray-400 max-w-sm mx-auto">
-                    There are currently no deleted tasks in this project.
+                    You have not deleted any tasks in this project yet.
                   </p>
                 </div>
               ) : (
@@ -2124,6 +2179,9 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
                             )}
                             {assignee && (
                               <span>Assignee: {assignee.userName}</span>
+                            )}
+                            {task.deletedByName && (
+                              <span className="text-red-500 font-medium">Deleted by: {task.deletedByName}</span>
                             )}
                           </div>
                         </div>

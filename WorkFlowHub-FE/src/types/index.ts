@@ -85,6 +85,9 @@ export interface Task {
   subtasks?: Subtask[];
   createdAt?: string;
   updatedAt?: string;
+  isDeleted?: boolean;
+  deletedById?: number | null;
+  deletedByName?: string;
 }
 
 export interface CreateTaskPayload {
