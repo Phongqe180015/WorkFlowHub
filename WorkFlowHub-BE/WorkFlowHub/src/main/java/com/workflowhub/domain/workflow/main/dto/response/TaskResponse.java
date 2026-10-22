@@ -31,6 +31,8 @@ public class TaskResponse {
     private LocalDate dueDate;
     private String taskCode;
     private Boolean isDeleted;
+    private Long deletedById;
+    private String deletedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

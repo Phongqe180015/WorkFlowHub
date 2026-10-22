@@ -7,6 +7,7 @@ import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.exception.UnauthorizedException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
 import com.workflowhub.common.util.SecurityUtils;
+import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.workflow.main.dto.request.CreateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.request.UpdateTaskRequest;
 import com.workflowhub.domain.workflow.main.dto.response.TaskResponse;
@@ -33,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.workflowhub.common.constant.CharacterConstants.SEMICOLON;
 import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_AUTHEN_TASK_STATUS;
 import static com.workflowhub.common.constant.MessageCodeSystem.INVALID_UPDATE_TASK_STATUS;
+import static com.workflowhub.common.constant.MessageCodeSystem.ONLY_THE_PROJECT_MANAGER_HAS_THE_AUTHORITY_TO_EMPTY_THE_ENTIRE_PROJECT_TRASH_BIN;
 import static com.workflowhub.common.constant.MessageConstants.TASK;
+import static com.workflowhub.common.enums.RoleEnums.ADMIN;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +47,7 @@ public class TaskService implements ITaskService {
                     .field("projectId",  "project.id",  Long.class)   // ManyToOne dot-path
                     .field("assigneeId", "assignee.id", Long.class)   // ManyToOne dot-path
                     .field("sprintId",   "sprint.id",   Long.class)   // ManyToOne dot-path
+                    .field("deletedById","deletedBy.id", Long.class)
                     .field("taskCode",   "taskCode",    String.class)
                     .field("status",     "status",      String.class)
                     .field("priority",   "priority",    String.class)
@@ -226,6 +230,12 @@ public class TaskService implements ITaskService {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
         existing.setIsDeleted(true);
+        Long currentUserId = ObjectUtils.isEmpty(SecurityUtils.getCurrentUserId()) ? SecurityUtils.getCurrentUserId() : null;
+        if(ObjectUtils.isNotEmpty(currentUserId)){
+            UsersEntity users = new UsersEntity();
+            users.setId(currentUserId);
+            existing.setDeletedBy(users);
+        }
         repository.save(existing);
 
         //Delete cache of user deleted
@@ -247,6 +257,7 @@ public class TaskService implements ITaskService {
         TaskEntity existing = repository.findById(id)
                 .orElseThrow(() -> NotFoundException.of(TASK, id));
         existing.setIsDeleted(false);
+        existing.setDeletedBy(null);
         TaskEntity saved = repository.save(existing);
         return taskMapper.toResponse(saved);
     }
@@ -258,5 +269,35 @@ public class TaskService implements ITaskService {
             throw NotFoundException.of(TASK, id);
         }
         repository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void emptyTrash(Long projectId, boolean all) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // Check PM/Admin privileges if the request is to clear the entire project's trash bin (all = true).
+        if (all) {
+            DeletedAllIfIsPM(projectId, currentUserId);
+        } else {
+            // Default: Only deletes tasks in the Recycle Bin that were deleted by currentUserId.
+            repository.deleteAllTrashTasksByProjectAndUser(projectId, currentUserId);
+        }
+        // Clear the project dashboard cache to ensure the statistics are up-to-date.
+        if (cacheManager != null && ObjectUtils.isNotEmpty(cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD))) {
+            cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD).evict(projectId);
+        }
+    }
+
+    private void DeletedAllIfIsPM(Long projectId, Long currentUserId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(ADMIN.getRoleName()));
+        boolean isPM = isAdmin || projectMemberRepository.findById(new ProjectMemberId(projectId, currentUserId))
+                .map(pm -> pm.getRole() != null && RoleEnums.PROJECT_MANAGER.matches(pm.getRole().getName()))
+                .orElse(false);
+        if (!isPM) {
+            throw new ForbiddenException(ONLY_THE_PROJECT_MANAGER_HAS_THE_AUTHORITY_TO_EMPTY_THE_ENTIRE_PROJECT_TRASH_BIN);
+        }
+        repository.deleteAllTrashTasksByProject(projectId);
     }
 }

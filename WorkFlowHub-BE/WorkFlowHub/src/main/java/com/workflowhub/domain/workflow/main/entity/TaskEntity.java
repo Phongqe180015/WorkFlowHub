@@ -58,4 +58,8 @@ public class TaskEntity extends BaseEntity {
 
     @Column(name="estimate", length = 50)
     private String estimate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deleted_by_id")
+    private UsersEntity deletedBy;
 }
