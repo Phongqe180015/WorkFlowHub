@@ -35,6 +35,8 @@ public interface ITaskMapper {
     @Mapping(target = "assigneeName", source = "assignee.name")
     @Mapping(target = "sprintId",     source = "sprint.id")
     @Mapping(target = "sprintName",   source = "sprint.name")
+    @Mapping(target = "deletedById",  source = "deletedBy.id")
+    @Mapping(target = "deletedByName",source = "deletedBy.name")
     TaskResponse toResponse(TaskEntity entity);
 
     /**

@@ -70,4 +70,10 @@ public class TaskController extends BaseController {
         taskService.permanentDeleteTask(id);
         return noContent();
     }
+
+    @DeleteMapping("/projects/{projectId}/trash")
+    public ApiResponse<Void> emptyTrash(@PathVariable Long projectId, @RequestParam(required = false, defaultValue = "false") boolean all) {
+        taskService.emptyTrash(projectId, all);
+        return noContent();
+    }
 }

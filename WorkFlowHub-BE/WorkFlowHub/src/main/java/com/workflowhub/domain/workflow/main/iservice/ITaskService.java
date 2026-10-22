@@ -21,4 +21,6 @@ public interface ITaskService {
     TaskResponse restoreTask(Long id);
 
     void permanentDeleteTask(Long id);
+
+    void emptyTrash(Long projectId, boolean all);
 }

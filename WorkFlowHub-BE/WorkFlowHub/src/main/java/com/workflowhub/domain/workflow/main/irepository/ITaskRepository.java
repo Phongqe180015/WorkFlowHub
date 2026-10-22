@@ -2,6 +2,7 @@ package com.workflowhub.domain.workflow.main.irepository;
 
 import com.workflowhub.common.repository.BaseRepository;
 import com.workflowhub.domain.workflow.main.entity.TaskEntity;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,12 @@ public interface ITaskRepository extends BaseRepository<TaskEntity, Long> {
 
     @Query("SELECT t.status, COUNT(t) FROM TaskEntity t WHERE t.project.id = :projectId AND t.isDeleted = false GROUP BY t.status")
     List<Object[]> countTasksByStatusForProject(@Param("projectId") Long projectId);
+
+    @Modifying
+    @Query("DELETE FROM TaskEntity t WHERE t.project.id = :projectId AND t.isDeleted = true AND t.deletedBy.id = :userId")
+    int deleteAllTrashTasksByProjectAndUser(@Param("projectId") Long projectId, @Param("userId") Long userId);
+
+    @Modifying
+    @Query("DELETE FROM TaskEntity t WHERE t.project.id = :projectId AND t.isDeleted = true")
+    int deleteAllTrashTasksByProject(@Param("projectId") Long projectId);
 }
