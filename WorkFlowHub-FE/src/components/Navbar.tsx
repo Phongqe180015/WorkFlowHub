@@ -48,11 +48,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenLogin, onOpenR
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
               <button
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => onNavigate('profile')}
+                title="Hồ sơ của bạn"
                 className="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-full transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold overflow-hidden shrink-0">
-                  {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                  {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://') || user.avatar.startsWith('data:') || user.avatar.startsWith('/')) ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
                     <span>{user.name?.substring(0, 2).toUpperCase() || 'U'}</span>

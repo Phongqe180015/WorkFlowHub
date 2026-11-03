@@ -34,9 +34,10 @@ import type { Project, Task, ActivityLog, Subtask, ProjectMember } from '../type
 
 interface UserDashboardProps {
   onGoToProjectManager?: (projectId?: number) => void;
+  onOpenProfile?: () => void;
 }
 
-export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManager }) => {
+export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManager, onOpenProfile }) => {
   const { user, currentRole } = useAuth();
   const [activeTab, setActiveTab] = useState<'myTasks' | 'myProjects' | 'activities'>('myTasks');
   const [taskFilter, setTaskFilter] = useState<'ALL' | 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'CLOSED'>('ALL');
@@ -694,7 +695,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
-                {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://') || user.avatar.startsWith('data:') || user.avatar.startsWith('/')) ? (
                   <img src={user.avatar} alt={user.name || 'User'} className="w-full h-full object-cover" />
                 ) : (
                   <span>{user?.name?.substring(0, 2).toUpperCase() || 'U'}</span>
@@ -705,9 +706,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
                 <div className="text-[11px] text-gray-400 truncate">{user?.email}</div>
               </div>
             </div>
-            <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex justify-between">
-              <span>Status:</span>
-              <span className="font-semibold text-emerald-600">Active</span>
+            <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-500 flex justify-between items-center">
+              <span>Status: <strong className="font-semibold text-emerald-600">Active</strong></span>
+              {onOpenProfile && (
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline cursor-pointer"
+                >
+                  Edit Profile →
+                </button>
+              )}
             </div>
           </div>
         </div>

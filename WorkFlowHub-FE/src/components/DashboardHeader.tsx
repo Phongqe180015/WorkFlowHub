@@ -5,9 +5,10 @@ import { NotificationBell } from './NotificationBell';
 
 interface DashboardHeaderProps {
   onBackHome: () => void;
+  onOpenProfile?: () => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome, onOpenProfile }) => {
   const { currentRole, setCurrentRole, user, logout, isAuthenticated } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -88,18 +89,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onBackHome }) 
         <div className="flex items-center gap-3 sm:gap-4">
           <NotificationBell />
 
-          {user && (
-            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-700">
-              <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[11px] overflow-hidden shrink-0">
-                {user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
-                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{user.name?.substring(0, 2).toUpperCase() || 'U'}</span>
-                )}
-              </div>
-              <span className="max-w-[120px] truncate">{user.name}</span>
+          {/* Profile Button / User Chip */}
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            title="Xem và chỉnh sửa hồ sơ của bạn"
+            className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:text-emerald-700 px-2 py-1.5 rounded-xl hover:bg-emerald-50/70 border border-gray-200/60 hover:border-emerald-200 transition-all cursor-pointer group shadow-xs"
+          >
+            <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[11px] overflow-hidden shrink-0 group-hover:ring-2 ring-emerald-500/30 transition-all">
+              {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://') || user.avatar.startsWith('data:') || user.avatar.startsWith('/')) ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span>{user?.name?.substring(0, 2).toUpperCase() || 'U'}</span>
+              )}
             </div>
-          )}
+            <span className="hidden sm:inline max-w-[120px] truncate">{user?.name || 'Your Profile'}</span>
+          </button>
 
           <button
             onClick={onBackHome}

@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './pages/LandingPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { UserDashboard } from './pages/UserDashboard';
 import { ProjectManagerDashboard } from './pages/ProjectManagerDashboard';
@@ -15,7 +16,7 @@ import { TokenStorage } from './utils/tokenStorage';
 const MainApp: React.FC = () => {
   const { currentRole, setCurrentRole, user, isAuthenticated, sessionExpiredMessage } = useAuth();
 
-  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>(() => {
+  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard' | 'profile'>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('token') || TokenStorage.getToken()) {
       return 'dashboard';
@@ -29,9 +30,11 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('token') || isAuthenticated) {
+    if (params.has('token')) {
       setCurrentPage('dashboard');
-    } else if (!isAuthenticated && currentPage === 'dashboard') {
+    } else if (isAuthenticated && currentPage === 'home') {
+      setCurrentPage('dashboard');
+    } else if (!isAuthenticated && currentPage !== 'home') {
       setCurrentPage('home');
     }
   }, [isAuthenticated, currentPage]);
@@ -104,7 +107,7 @@ const MainApp: React.FC = () => {
           />
         );
       }
-      return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
+      return <UserDashboard onGoToProjectManager={handleOpenProjectManager} onOpenProfile={() => setCurrentPage('profile')} />;
     }
 
     // 2. Preview mode (Demo)
@@ -112,7 +115,7 @@ const MainApp: React.FC = () => {
       case 'ADMIN':
         return <AdminDashboard />;
       case 'USER':
-        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
+        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} onOpenProfile={() => setCurrentPage('profile')} />;
       case 'PROJECT_MANAGER':
         return (
           <ProjectManagerDashboard 
@@ -125,7 +128,7 @@ const MainApp: React.FC = () => {
       case 'VIEWER':
         return <ViewerDashboard />;
       default:
-        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} />;
+        return <UserDashboard onGoToProjectManager={handleOpenProjectManager} onOpenProfile={() => setCurrentPage('profile')} />;
     }
   };
 
@@ -136,6 +139,8 @@ const MainApp: React.FC = () => {
           onNavigate={(page) => {
             if (page === 'dashboard') {
               handleGoToDashboard();
+            } else if (page === 'profile') {
+              setCurrentPage('profile');
             } else {
               setCurrentPage('home');
             }
@@ -144,7 +149,10 @@ const MainApp: React.FC = () => {
           onOpenRegister={() => handleOpenAuth('register')}
         />
       ) : (
-        <DashboardHeader onBackHome={() => setCurrentPage('home')} />
+        <DashboardHeader
+          onBackHome={() => setCurrentPage('home')}
+          onOpenProfile={() => setCurrentPage('profile')}
+        />
       )}
 
       <main className="flex-1">
@@ -154,6 +162,8 @@ const MainApp: React.FC = () => {
             onOpenLogin={() => handleOpenAuth('login')}
             onOpenRegister={() => handleOpenAuth('register')}
           />
+        ) : currentPage === 'profile' ? (
+          <ProfilePage onBack={() => handleGoToDashboard()} />
         ) : (
           renderDashboardByRole()
         )}
