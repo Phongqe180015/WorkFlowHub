@@ -12,6 +12,7 @@ interface AuthContextType {
   setCurrentRole: (role: RoleType) => void;
   token: string | null;
   login: (token: string, user: User, rememberMe?: boolean) => void;
+  updateUser: (updatedFields: Partial<User>) => void;
   logout: (reason?: string) => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -144,6 +145,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSessionExpiredMessage(null);
   };
 
+  const updateUser = useCallback((updatedFields: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedFields };
+      TokenStorage.updateUser(updated);
+      return updated;
+    });
+  }, []);
+
   const isAdmin = (user?.roleName || currentRole || '').toUpperCase() === 'ADMIN';
 
   return (
@@ -154,6 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentRole,
         token,
         login,
+        updateUser,
         logout,
         isAuthenticated: !!token && !!user,
         isAdmin,

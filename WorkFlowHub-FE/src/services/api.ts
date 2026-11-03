@@ -61,9 +61,14 @@ export class ApiClient {
   public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    // If body is NOT FormData and Content-Type is not explicitly provided, default to application/json
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    if (!isFormData && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -122,17 +127,28 @@ export class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  public static post<T>(endpoint: string, body?: any) {
+  public static post<T>(endpoint: string, body?: any, options: RequestInit = {}) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     return this.request<T>(endpoint, {
+      ...options,
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
     });
   }
 
-  public static put<T>(endpoint: string, body?: any) {
+  public static put<T>(endpoint: string, body?: any, options: RequestInit = {}) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     return this.request<T>(endpoint, {
+      ...options,
       method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+    });
+  }
+
+  public static upload<T>(endpoint: string, formData: FormData) {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: formData,
     });
   }
 
@@ -261,6 +277,17 @@ export const AuthService = {
    */
   async refreshToken(refreshToken: string): Promise<ApiResponse<AuthResponse>> {
     return ApiClient.post<ApiResponse<AuthResponse>>('/auth/refresh-token', { refreshToken });
+  },
+
+  /**
+   * POST /api/v1/auth/change-password
+   */
+  async changePassword(data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword?: string;
+  }): Promise<ApiResponse<void>> {
+    return ApiClient.post<ApiResponse<void>>('/auth/change-password', data);
   },
 };
 
@@ -461,6 +488,55 @@ export const UserService = {
   async updateUserRole(id: number, roleId: number): Promise<User> {
     const res = await ApiClient.put<ApiResponse<User>>(`/users/${id}`, { roleId });
     return res.data;
+  },
+
+  /**
+   * GET /api/v1/users/{id}
+   */
+  async getUserById(id: number): Promise<User> {
+    const res = await ApiClient.get<ApiResponse<User>>(`/users/${id}`);
+    return res.data;
+  },
+
+  /**
+   * PUT /api/v1/users/{id} - update personal profile
+   */
+  async updateUserProfile(
+    id: number,
+    data: { name?: string; avatar?: string | null; email?: string }
+  ): Promise<User> {
+    const res = await ApiClient.put<ApiResponse<User>>(`/users/${id}`, data);
+    return res.data;
+  },
+
+  /**
+   * Upload avatar image:
+   * First attempts backend file upload endpoint if available,
+   * otherwise seamlessly converts the image file to a base64 Data URI.
+   */
+  async uploadAvatar(file: File): Promise<string> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await ApiClient.upload<ApiResponse<any>>('/upload', formData);
+      if (typeof res?.data === 'string') return res.data;
+      if (res?.data?.url) return res.data.url;
+    } catch (uploadErr) {
+      console.warn('Backend upload failed, falling back to base64 Data URL:', uploadErr);
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read image file'));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
   },
 };
 

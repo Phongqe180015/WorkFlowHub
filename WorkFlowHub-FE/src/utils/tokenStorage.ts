@@ -148,6 +148,19 @@ export const TokenStorage = {
   },
 
   /**
+   * Update active user payload in both sessionStorage and localStorage if present.
+   */
+  updateUser(user: any): void {
+    const userJson = JSON.stringify(user);
+    if (sessionStorage.getItem(TOKEN_KEY)) {
+      sessionStorage.setItem(USER_KEY, userJson);
+    }
+    if (localStorage.getItem(TOKEN_KEY)) {
+      localStorage.setItem(USER_KEY, userJson);
+    }
+  },
+
+  /**
    * Update active role.
    */
   saveRole(role: string): void {
