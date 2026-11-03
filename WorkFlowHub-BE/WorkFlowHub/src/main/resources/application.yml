@@ -117,6 +117,15 @@ spring:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "*"
         spring.json.value.default.type: com.workflowhub.domain.workflow.main.event.dto.TaskAssignedEvent
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dxobnw4t7}
+  api-key: ${CLOUDINARY_API_KEY:your_new_api_key}
+  api-secret: ${CLOUDINARY_API_SECRET:your_new_api_secret}
 # ============================================================
 # SERVER
 # ============================================================
