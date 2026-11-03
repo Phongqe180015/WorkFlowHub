@@ -5,6 +5,7 @@ import com.workflowhub.common.controller.BaseController;
 import com.workflowhub.common.dto.response.ApiResponse;
 import com.workflowhub.common.dto.response.PageResponse;
 import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateProfileRequest;
 import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
 import com.workflowhub.domain.master.dto.response.UserResponse;
 import com.workflowhub.domain.master.iservice.IUsersService;
@@ -60,5 +61,15 @@ public class UsersController extends BaseController {
     public ApiResponse<Void> delete(@PathVariable Long id) {
         usersService.deleteUser(id);
         return noContent();
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<UserResponse> getUserProfile() {
+        return success(usersService.getCurrentProfile());
+    }
+
+    @PutMapping("/me")
+    public ApiResponse<UserResponse> updateUserProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return success(usersService.updateCurrentUser(request));
     }
 }

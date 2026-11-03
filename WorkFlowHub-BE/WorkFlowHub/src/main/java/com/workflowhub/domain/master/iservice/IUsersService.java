@@ -1,6 +1,7 @@
 package com.workflowhub.domain.master.iservice;
 
 import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateProfileRequest;
 import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
 import com.workflowhub.domain.master.dto.response.UserResponse;
 import org.springframework.data.domain.Page;
@@ -17,4 +18,8 @@ public interface IUsersService {
     UserResponse updateUser(Long id, UpdateUserRequest request);
 
     void deleteUser(Long id);
+
+    UserResponse getCurrentProfile();
+
+    UserResponse updateCurrentUser(UpdateProfileRequest profileRequest);
 }

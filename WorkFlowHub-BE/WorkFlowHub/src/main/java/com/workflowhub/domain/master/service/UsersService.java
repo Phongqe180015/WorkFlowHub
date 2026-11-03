@@ -1,9 +1,12 @@
 package com.workflowhub.domain.master.service;
 
+import com.workflowhub.common.constant.MessageCodeSystem;
 import com.workflowhub.common.exception.ConflictException;
 import com.workflowhub.common.exception.NotFoundException;
+import com.workflowhub.common.exception.UnauthorizedException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
 import com.workflowhub.domain.master.dto.request.CreateUserRequest;
+import com.workflowhub.domain.master.dto.request.UpdateProfileRequest;
 import com.workflowhub.domain.master.dto.request.UpdateUserRequest;
 import com.workflowhub.domain.master.dto.response.UserResponse;
 import com.workflowhub.domain.master.entity.UsersEntity;
@@ -13,9 +16,12 @@ import com.workflowhub.domain.master.mapper.IUsersMapper;
 import com.workflowhub.domain.workflow.security.entity.RoleEntity;
 import com.workflowhub.domain.workflow.security.irepository.IRoleRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,5 +99,42 @@ public class UsersService implements IUsersService {
             throw NotFoundException.of(USER, id);
         }
         repository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getCurrentProfile() {
+        Authentication authentication = validateAuthen();
+        UsersEntity user = getUsersEntityByEmail(authentication);
+        return usersMapper.toResponse(user);
+    }
+
+    private UsersEntity getUsersEntityByEmail(Authentication authentication) {
+        String email = authentication.getName();
+        return repository.findByEmail(email)
+                .orElseThrow(() -> NotFoundException.of(USER, email));
+    }
+
+    private static Authentication validateAuthen() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(ObjectUtils.isEmpty(authentication) || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException(MessageCodeSystem.INVALID_AUTHEN_TASK_STATUS);
+        }
+        return authentication;
+    }
+
+    @Override
+    public UserResponse updateCurrentUser(UpdateProfileRequest profileRequest) {
+        Authentication authentication = validateAuthen();
+        UsersEntity user = getUsersEntityByEmail(authentication);
+
+        if(ObjectUtils.isNotEmpty(profileRequest.getName())){
+            user.setName(profileRequest.getName().trim());
+        }
+        if(ObjectUtils.isNotEmpty(profileRequest.getAvatar())){
+            user.setAvatar(profileRequest.getAvatar());
+        }
+        UsersEntity saved = repository.save(user);
+        return usersMapper.toResponse(saved);
     }
 }

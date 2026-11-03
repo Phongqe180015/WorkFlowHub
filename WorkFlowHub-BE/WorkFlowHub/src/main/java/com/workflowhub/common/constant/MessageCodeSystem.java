@@ -10,5 +10,7 @@ public final class MessageCodeSystem {
     public static final String YOU_CANNOT_REMOVE_YOURSELF_FROM_THE_PROJECT = "You cannot remove yourself from the project.";
 
     public static final String ONLY_THE_PROJECT_MANAGER_HAS_THE_AUTHORITY_TO_EMPTY_THE_ENTIRE_PROJECT_TRASH_BIN = "Only the Project Manager has the authority to empty the entire project trash bin.";
-    
+
+    public static final String EMPTY_FILENAME = "The filename is empty.";
+    public static final String INVALID_FILENAME = "Invalid file";
 }
