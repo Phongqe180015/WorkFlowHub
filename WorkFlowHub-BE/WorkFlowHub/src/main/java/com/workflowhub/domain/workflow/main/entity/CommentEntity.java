@@ -29,8 +29,12 @@ public class CommentEntity extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
+    @JoinColumn(name = "task_id", nullable = true)
     private TaskEntity task;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subtask_id", nullable = true)
+    private SubtaskEntity subtask;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

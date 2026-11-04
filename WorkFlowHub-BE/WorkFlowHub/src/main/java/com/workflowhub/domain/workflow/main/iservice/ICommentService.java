@@ -6,11 +6,17 @@ import com.workflowhub.domain.workflow.main.dto.response.CommentResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface ICommentService {
 
     Page<CommentResponse> getPage(String search, Pageable pageable);
 
     CommentResponse getById(Long id);
+
+    List<CommentResponse> getByTaskId(Long taskId);
+
+    List<CommentResponse> getBySubtaskId(Long subtaskId);
 
     CommentResponse create(CreateCommentRequest request);
 
