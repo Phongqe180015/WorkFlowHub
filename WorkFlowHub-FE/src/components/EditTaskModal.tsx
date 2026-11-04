@@ -3,6 +3,7 @@ import { TaskService } from '../services/api';
 import type { Task, ProjectMember, Sprint, UpdateTaskPayload } from '../types';
 import { X, Calendar, Loader2, AlertCircle, Edit3, User, Layers, Flag, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getTodayDateString, isPastDate } from '../utils/date';
 
 interface EditTaskModalProps {
   task: Task | null;
@@ -70,6 +71,10 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
     e.preventDefault();
     if (!title.trim()) {
       setError('Please enter a task title');
+      return;
+    }
+    if (isPastDate(dueDate) && dueDate !== (task.dueDate || '').split('T')[0]) {
+      setError('Due date cannot be in the past.');
       return;
     }
 
@@ -301,6 +306,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                min={getTodayDateString()}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
                 disabled={loading}
               />

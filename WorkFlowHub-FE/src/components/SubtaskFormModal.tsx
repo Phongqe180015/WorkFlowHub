@@ -3,6 +3,7 @@ import { SubtaskService } from '../services/subtaskService';
 import type { Subtask, ProjectMember } from '../types';
 import { X, Calendar, Loader2, AlertCircle, ListChecks, User, Clock, Flag, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getTodayDateString, isPastDate } from '../utils/date';
 
 interface SubtaskFormModalProps {
   taskId: number;
@@ -82,6 +83,10 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
     e.preventDefault();
     if (!title.trim()) {
       setError('Please enter a subtask title');
+      return;
+    }
+    if (isPastDate(dueDate) && dueDate !== (subtask?.dueDate || '').split('T')[0]) {
+      setError('Due date cannot be in the past.');
       return;
     }
 
@@ -262,6 +267,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              min={getTodayDateString()}
               className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
               disabled={loading}
             />
