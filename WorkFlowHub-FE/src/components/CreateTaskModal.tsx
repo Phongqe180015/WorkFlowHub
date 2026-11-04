@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TaskService } from '../services/api';
 import type { Task, ProjectMember, Sprint } from '../types';
 import { X, Calendar, Loader2, AlertCircle, CheckSquare, ShieldCheck, User, Layers, Clock } from 'lucide-react';
+import { getTodayDateString, isPastDate } from '../utils/date';
 
 interface CreateTaskModalProps {
   projectId: number;
@@ -22,8 +23,6 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
-
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
@@ -31,7 +30,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [priority, setPriority] = useState<string>('MEDIUM');
   const [status, setStatus] = useState<string>('TO_DO');
   const [estimate, setEstimate] = useState<string>('');
-  const [dueDate, setDueDate] = useState<string>(getTodayStr());
+  const [dueDate, setDueDate] = useState<string>(getTodayDateString());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +46,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     e.preventDefault();
     if (!title.trim()) {
       setError('Please enter a task title');
+      return;
+    }
+    if (isPastDate(dueDate)) {
+      setError('Due date cannot be in the past.');
       return;
     }
 
@@ -74,7 +77,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setPriority('MEDIUM');
       setStatus('TO_DO');
       setEstimate('');
-      setDueDate(getTodayStr());
+      setDueDate(getTodayDateString());
       setLoading(false);
       onSuccess(createdTask);
       onClose();
@@ -262,6 +265,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                min={getTodayDateString()}
                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-800"
                 disabled={loading}
               />
