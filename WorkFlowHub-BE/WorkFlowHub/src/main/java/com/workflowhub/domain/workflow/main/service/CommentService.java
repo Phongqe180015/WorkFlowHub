@@ -39,6 +39,7 @@ public class CommentService implements ICommentService {
     private final ICommentRepository repository;
     private final ICommentMapper mapper;
     private final INotificationRepository notificationRepository;
+    private final IUsersRepository usersRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -72,7 +73,11 @@ public class CommentService implements ICommentService {
     @Override
     @Transactional
     public CommentResponse create(CreateCommentRequest request) {
+        UsersEntity user = usersRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         CommentEntity entity = mapper.toEntity(request);
+        entity.setUser(user);
         CommentEntity saved = repository.save(entity);
 
         // Send notifications to @mentioned users

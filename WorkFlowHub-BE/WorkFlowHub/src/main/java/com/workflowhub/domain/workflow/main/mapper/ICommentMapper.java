@@ -18,7 +18,6 @@ public interface ICommentMapper {
 
     @Mapping(target = "task",    expression = "java(taskRef(request.getTaskId()))")
     @Mapping(target = "subtask", expression = "java(subtaskRef(request.getSubtaskId()))")
-    @Mapping(target = "user",    expression = "java(userRef(request.getUserId()))")
     CommentEntity toEntity(CreateCommentRequest request);
 
     @Mapping(target = "taskId",       source = "task.id")
@@ -42,13 +41,6 @@ public interface ICommentMapper {
     default SubtaskEntity subtaskRef(Long id) {
         if (id == null) return null;
         SubtaskEntity ref = new SubtaskEntity();
-        ref.setId(id);
-        return ref;
-    }
-
-    default UsersEntity userRef(Long id) {
-        if (id == null) return null;
-        UsersEntity ref = new UsersEntity();
         ref.setId(id);
         return ref;
     }
