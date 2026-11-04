@@ -114,17 +114,11 @@ export const ProjectManagerDashboard: React.FC<ProjectManagerDashboardProps> = (
   const [isSubtaskFormOpen, setIsSubtaskFormOpen] = useState(false);
 
   const handleOpenTaskDetail = (task: Task) => {
-    setSelectedDetailTask(task);
-    setSelectedDetailSubtask(null);
-    setParentTaskForSubtask(null);
-    setIsDetailModalOpen(true);
+    window.location.hash = `#/tasks/${task.id}`;
   };
 
   const handleOpenSubtaskDetail = (st: Subtask, pTask: Task) => {
-    setSelectedDetailSubtask(st);
-    setParentTaskForSubtask(pTask);
-    setSelectedDetailTask(null);
-    setIsDetailModalOpen(true);
+    window.location.hash = `#/tasks/${pTask.id}/subtasks/${st.id}`;
   };
 
   const handleOpenEditTask = (task: Task) => {
