@@ -15,7 +15,9 @@ import type {
   CreateSubtaskPayload,
   UpdateSubtaskPayload,
   ActivityLog,
-  AppNotification
+  AppNotification,
+  Comment,
+  CreateCommentPayload
 } from '../types';
 
 export class ApiError extends Error {
@@ -841,4 +843,72 @@ export const NotificationService = {
   },
 };
 
+export const CommentApiService = {
+  normalizeComment(value: Partial<Comment> | null | undefined, fallback?: Partial<Comment>): Comment {
+    const source = { ...fallback, ...value };
+    return {
+      id: Number(source.id ?? Date.now()),
+      taskId: source.taskId,
+      subtaskId: source.subtaskId,
+      userId: source.userId,
+      userName: source.userName || fallback?.userName || 'Unknown',
+      userAvatar: source.userAvatar,
+      content: typeof source.content === 'string' ? source.content : (fallback?.content || ''),
+      mentionedUserIds: Array.isArray(source.mentionedUserIds) ? source.mentionedUserIds : [],
+      createdAt: source.createdAt || fallback?.createdAt || new Date().toISOString(),
+      updatedAt: source.updatedAt,
+      isSelf: source.isSelf,
+    };
+  },
+  /**
+   * GET /api/v1/comments/task/{taskId}
+   * Returns all comments for a task ordered by createdAt ASC
+   */
+  async getCommentsByTaskId(taskId: number): Promise<Comment[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<Comment[]>>(`/comments/task/${taskId}`);
+      return (Array.isArray(res.data) ? res.data : []).map((c) => this.normalizeComment(c));
+    } catch (err) {
+      console.warn(`Failed to fetch comments for taskId=${taskId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * GET /api/v1/comments/subtask/{subtaskId}
+   * Returns all comments for a subtask ordered by createdAt ASC
+   */
+  async getCommentsBySubtaskId(subtaskId: number | string): Promise<Comment[]> {
+    try {
+      const res = await ApiClient.get<ApiResponse<Comment[]>>(`/comments/subtask/${subtaskId}`);
+      return (Array.isArray(res.data) ? res.data : []).map((c) => this.normalizeComment(c));
+    } catch (err) {
+      console.warn(`Failed to fetch comments for subtaskId=${subtaskId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * POST /api/v1/comments
+   */
+  async createComment(payload: CreateCommentPayload): Promise<Comment> {
+    const res = await ApiClient.post<ApiResponse<Comment>>('/comments', payload);
+    return this.normalizeComment(res.data, payload);
+  },
+
+  /**
+   * PUT /api/v1/comments/{id}
+   */
+  async updateComment(id: number, content: string): Promise<Comment> {
+    const res = await ApiClient.put<ApiResponse<Comment>>(`/comments/${id}`, { content });
+    return res.data;
+  },
+
+  /**
+   * DELETE /api/v1/comments/{id}
+   */
+  async deleteComment(id: number): Promise<void> {
+    await ApiClient.delete<ApiResponse<void>>(`/comments/${id}`);
+  },
+};
 

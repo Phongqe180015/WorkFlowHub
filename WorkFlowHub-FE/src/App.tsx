@@ -10,8 +10,33 @@ import { UserDashboard } from './pages/UserDashboard';
 import { ProjectManagerDashboard } from './pages/ProjectManagerDashboard';
 import { DeveloperDashboard } from './pages/DeveloperDashboard';
 import { ViewerDashboard } from './pages/ViewerDashboard';
+import { TaskDetailPage } from './pages/TaskDetailPage';
+import { SubtaskDetailPage } from './pages/SubtaskDetailPage';
 
 import { TokenStorage } from './utils/tokenStorage';
+
+type DetailRoute =
+  | { type: 'task'; taskId: number }
+  | { type: 'subtask'; taskId: number; subtaskId: number }
+  | null;
+
+const parseDetailRoute = (hash: string): DetailRoute => {
+  const taskMatch = hash.match(/^#\/tasks\/(\d+)$/);
+  if (taskMatch) {
+    return { type: 'task', taskId: Number(taskMatch[1]) };
+  }
+
+  const subtaskMatch = hash.match(/^#\/tasks\/(\d+)\/subtasks\/(\d+)$/);
+  if (subtaskMatch) {
+    return {
+      type: 'subtask',
+      taskId: Number(subtaskMatch[1]),
+      subtaskId: Number(subtaskMatch[2]),
+    };
+  }
+
+  return null;
+};
 
 const MainApp: React.FC = () => {
   const { currentRole, setCurrentRole, user, isAuthenticated, sessionExpiredMessage } = useAuth();
@@ -27,6 +52,17 @@ const MainApp: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [detailRoute, setDetailRoute] = useState<DetailRoute>(() => parseDetailRoute(window.location.hash));
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setDetailRoute(parseDetailRoute(window.location.hash));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -90,6 +126,12 @@ const MainApp: React.FC = () => {
     }
     setCurrentPage('dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackFromDetail = () => {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    setDetailRoute(null);
+    handleGoToDashboard();
   };
 
   const renderDashboardByRole = () => {
@@ -156,7 +198,15 @@ const MainApp: React.FC = () => {
       )}
 
       <main className="flex-1">
-        {currentPage === 'home' ? (
+        {detailRoute?.type === 'task' ? (
+          <TaskDetailPage taskId={detailRoute.taskId} onBack={handleBackFromDetail} />
+        ) : detailRoute?.type === 'subtask' ? (
+          <SubtaskDetailPage
+            taskId={detailRoute.taskId}
+            subtaskId={detailRoute.subtaskId}
+            onBack={handleBackFromDetail}
+          />
+        ) : currentPage === 'home' ? (
           <LandingPage
             onGoToDashboard={handleGoToDashboard}
             onOpenLogin={() => handleOpenAuth('login')}

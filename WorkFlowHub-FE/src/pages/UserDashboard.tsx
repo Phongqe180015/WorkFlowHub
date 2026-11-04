@@ -109,23 +109,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onGoToProjectManag
   };
 
   const handleOpenTaskDetail = (task: Task) => {
-    if (task.projectId) {
-      loadMembersForProject(task.projectId);
-    }
-    setSelectedDetailTask(task);
-    setSelectedDetailSubtask(null);
-    setParentTaskForSubtask(null);
-    setIsDetailModalOpen(true);
+    window.location.hash = `#/tasks/${task.id}`;
   };
 
   const handleOpenSubtaskDetail = (st: Subtask, pTask: Task) => {
-    if (pTask.projectId) {
-      loadMembersForProject(pTask.projectId);
-    }
-    setSelectedDetailSubtask(st);
-    setParentTaskForSubtask(pTask);
-    setSelectedDetailTask(null);
-    setIsDetailModalOpen(true);
+    window.location.hash = `#/tasks/${pTask.id}/subtasks/${st.id}`;
   };
 
   const handleOpenEditTask = (task: Task) => {

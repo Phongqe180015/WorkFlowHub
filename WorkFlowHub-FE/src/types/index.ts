@@ -213,10 +213,26 @@ export interface Attachment {
 
 export interface Comment {
   id: number;
+  taskId?: number;
+  subtaskId?: number;
+  userId?: number;
   userName: string;
-  time: string;
+  userAvatar?: string;
   content: string;
+  mentionedUserIds?: number[];
+  createdAt?: string;
+  updatedAt?: string;
+  // Legacy compat
+  time?: string;
   isSelf?: boolean;
+}
+
+export interface CreateCommentPayload {
+  taskId?: number;
+  subtaskId?: number;
+  userId: number;
+  content: string;
+  mentionedUserIds?: number[];
 }
 
 export interface NotificationItem {
