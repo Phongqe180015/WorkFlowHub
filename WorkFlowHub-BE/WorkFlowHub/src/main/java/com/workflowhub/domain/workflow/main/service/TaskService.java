@@ -19,6 +19,7 @@ import com.workflowhub.domain.workflow.main.irepository.ITaskRepository;
 import com.workflowhub.domain.workflow.main.iservice.ITaskService;
 import com.workflowhub.domain.workflow.main.mapper.ITaskMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,6 +41,7 @@ import static com.workflowhub.common.enums.RoleEnums.ADMIN;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TaskService implements ITaskService {
 
     private static final RsqlSpecificationBuilder<TaskEntity> RSQL_BUILDER =
@@ -150,18 +152,26 @@ public class TaskService implements ITaskService {
     private void evictTaskCaches(Long oldAssigneeId, TaskEntity saved) {
         if (cacheManager == null) return;
 
-        var userCache = cacheManager.getCache(RedisConfig.CACHE_USER_DASHBOARD);
-        if (ObjectUtils.isEmpty(userCache)) {
-            if (oldAssigneeId != null) {
-                userCache.evict(oldAssigneeId);
-            }
-            if (saved.getAssignee() != null && !saved.getAssignee().getId().equals(oldAssigneeId)) {
-                userCache.evict(saved.getAssignee().getId());
-            }
+        if (oldAssigneeId != null) {
+            evictCache(RedisConfig.CACHE_USER_DASHBOARD, oldAssigneeId);
         }
-        var projectCache = cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD);
-        if (ObjectUtils.isEmpty(projectCache) && saved.getProject() != null) {
-            projectCache.evict(saved.getProject().getId());
+        if (saved.getAssignee() != null && !saved.getAssignee().getId().equals(oldAssigneeId)) {
+            evictCache(RedisConfig.CACHE_USER_DASHBOARD, saved.getAssignee().getId());
+        }
+        if (saved.getProject() != null) {
+            evictCache(RedisConfig.CACHE_PROJECT_DASHBOARD, saved.getProject().getId());
+        }
+    }
+
+    private void evictCache(String cacheName, Object key) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.evict(key);
+            }
+        } catch (RuntimeException exception) {
+            log.warn("Cache eviction failed for '{}' and key '{}'; continuing without cache",
+                    cacheName, key, exception);
         }
     }
     private void validateBeforeUpdateTask(UpdateTaskRequest request, TaskEntity existing) {
@@ -240,14 +250,12 @@ public class TaskService implements ITaskService {
 
         //Delete cache of user deleted
         if(ObjectUtils.isNotEmpty(existing.getAssignee())){
-            cacheManager.getCache(RedisConfig.CACHE_USER_DASHBOARD)
-                    .evict(existing.getAssignee().getId());
+            evictCache(RedisConfig.CACHE_USER_DASHBOARD, existing.getAssignee().getId());
         }
 
         //Delete cache of project deleted
         if(ObjectUtils.isNotEmpty(existing.getProject())){
-            cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD)
-                    .evict(existing.getProject().getId());
+            evictCache(RedisConfig.CACHE_PROJECT_DASHBOARD, existing.getProject().getId());
         }
     }
 
@@ -283,9 +291,7 @@ public class TaskService implements ITaskService {
             repository.deleteAllTrashTasksByProjectAndUser(projectId, currentUserId);
         }
         // Clear the project dashboard cache to ensure the statistics are up-to-date.
-        if (cacheManager != null && ObjectUtils.isNotEmpty(cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD))) {
-            cacheManager.getCache(RedisConfig.CACHE_PROJECT_DASHBOARD).evict(projectId);
-        }
+        evictCache(RedisConfig.CACHE_PROJECT_DASHBOARD, projectId);
     }
 
     private void DeletedAllIfIsPM(Long projectId, Long currentUserId) {

@@ -34,6 +34,6 @@ public final class SecurityUtils {
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             return auth.getName();
         }
-        throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện thao tác");
+        throw new UnauthorizedException("Please log in to perform this action");
     }
 }
