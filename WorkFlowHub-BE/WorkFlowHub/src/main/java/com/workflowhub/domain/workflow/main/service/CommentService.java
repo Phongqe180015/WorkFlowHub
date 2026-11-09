@@ -2,6 +2,7 @@ package com.workflowhub.domain.workflow.main.service;
 
 import com.workflowhub.common.exception.NotFoundException;
 import com.workflowhub.common.rsql.RsqlSpecificationBuilder;
+import com.workflowhub.common.service.EmailNotificationService;
 import com.workflowhub.domain.master.entity.UsersEntity;
 import com.workflowhub.domain.master.irepository.IUsersRepository;
 import com.workflowhub.domain.workflow.main.dto.request.CreateCommentRequest;
@@ -14,6 +15,7 @@ import com.workflowhub.domain.workflow.main.irepository.INotificationRepository;
 import com.workflowhub.domain.workflow.main.iservice.ICommentService;
 import com.workflowhub.domain.workflow.main.mapper.ICommentMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -25,6 +27,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CommentService implements ICommentService {
 
     private static final RsqlSpecificationBuilder<CommentEntity> RSQL_BUILDER =
@@ -40,6 +43,7 @@ public class CommentService implements ICommentService {
     private final ICommentMapper mapper;
     private final INotificationRepository notificationRepository;
     private final IUsersRepository usersRepository;
+    private final EmailNotificationService emailNotificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -88,24 +92,33 @@ public class CommentService implements ICommentService {
             String notifContent = commenterName + " mentioned you in a comment: \"" + snippet + "\" " + targetRef;
 
             List<NotificationEntity> notifications = new ArrayList<>();
+            List<UsersEntity> mentionedUsers = new ArrayList<>();
+            Long actorId = request.getUserId();
             for (Long mentionedUserId : request.getMentionedUserIds()) {
                 // Skip notifying yourself
-                if (mentionedUserId.equals(request.getUserId())) continue;
-                try {
-                    UsersEntity mentionedUser = new UsersEntity();
-                    mentionedUser.setId(mentionedUserId);
+                if (mentionedUserId == null || mentionedUserId.equals(actorId)) continue;
+                usersRepository.findById(mentionedUserId).ifPresentOrElse(mentionedUser -> {
                     NotificationEntity notif = new NotificationEntity();
                     notif.setUser(mentionedUser);
                     notif.setType("COMMENT_MENTION");
                     notif.setContent(notifContent);
                     notif.setIsRead(false);
                     notifications.add(notif);
-                } catch (Exception e) {
-                    // Skip if user not found
-                }
+                    mentionedUsers.add(mentionedUser);
+                }, () -> log.warn("Skipping comment mention for unknown user {}", mentionedUserId));
             }
             if (!notifications.isEmpty()) {
                 notificationRepository.saveAll(notifications);
+                for (UsersEntity mentionedUser : mentionedUsers) {
+                    emailNotificationService.sendCommentMention(
+                            mentionedUser,
+                            commenterName,
+                            snippet,
+                            request.getTaskId(),
+                            request.getSubtaskId(),
+                            actorId
+                    );
+                }
             }
         }
 

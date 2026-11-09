@@ -3,6 +3,8 @@ package com.workflowhub.domain.workflow.main.event.consumer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workflowhub.common.config.KafkaConfig;
+import com.workflowhub.common.service.EmailNotificationService;
+import com.workflowhub.domain.master.irepository.IUsersRepository;
 import com.workflowhub.domain.workflow.main.dto.request.CreateNotificationRequest;
 import com.workflowhub.domain.workflow.main.event.dto.TaskAssignedEvent;
 import com.workflowhub.domain.workflow.main.event.producer.TaskEventProducer;
@@ -20,6 +22,8 @@ import org.springframework.stereotype.Component;
 public class NotificationConsumer {
 
     private final INotificationService notificationService;
+    private final IUsersRepository usersRepository;
+    private final EmailNotificationService emailNotificationService;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(
@@ -53,12 +57,41 @@ public class NotificationConsumer {
 
             // Automatically create notification records in PostgreSQL
             createNotification(event, isSubtask);
+            sendEmail(event, isSubtask);
 
             log.info("==> [KAFKA CONSUMER] Successfully created a notification in the database for the User ID: {}", event.getAssigneeId());
 
         }catch (Exception e) {
             log.error("Error while processing Kafka event in NotificationConsumer: {}", e.getMessage(), e);
         }
+    }
+
+    private void sendEmail(TaskAssignedEvent event, boolean isSubtask) {
+            if (event.getAssigneeId() == null || event.getAssigneeId().equals(event.getActorId())) {
+                return;
+            }
+            usersRepository.findById(event.getAssigneeId()).ifPresentOrElse(
+                    recipient -> {
+                        if (isSubtask) {
+                            emailNotificationService.sendSubtaskAssigned(
+                                    recipient,
+                                    event.getSubtaskTitle(),
+                                    event.getTaskTitle(),
+                                    event.getTaskId(),
+                                    event.getSubtaskId(),
+                                    event.getActorId()
+                            );
+                        } else {
+                            emailNotificationService.sendTaskAssigned(
+                                    recipient,
+                                    event.getTaskTitle(),
+                                    event.getTaskId(),
+                                    event.getActorId()
+                            );
+                        }
+                    },
+                    () -> log.warn("Cannot send assignment email; user {} was not found", event.getAssigneeId())
+            );
     }
 
     private void createNotification(TaskAssignedEvent event, boolean isSubtask) {

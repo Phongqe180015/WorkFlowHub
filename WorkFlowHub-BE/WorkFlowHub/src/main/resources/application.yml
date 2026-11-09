@@ -1,6 +1,17 @@
 spring:
   application:
     name: WorkFlowHub
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
 
   # Profile mặc định (đổi giữa 'local' và 'dev')
   profiles:
@@ -173,6 +184,10 @@ google:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  mail:
+    enabled: ${MAIL_ENABLED:true}
+    from: ${MAIL_FROM:}
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 security:
   jwt:

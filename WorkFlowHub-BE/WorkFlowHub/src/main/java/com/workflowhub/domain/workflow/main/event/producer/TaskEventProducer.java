@@ -1,6 +1,8 @@
 package com.workflowhub.domain.workflow.main.event.producer;
 
 import com.workflowhub.common.config.KafkaConfig;
+import com.workflowhub.common.service.EmailNotificationService;
+import com.workflowhub.domain.master.irepository.IUsersRepository;
 import com.workflowhub.domain.workflow.main.dto.request.CreateNotificationRequest;
 import com.workflowhub.domain.workflow.main.event.dto.TaskAssignedEvent;
 import com.workflowhub.domain.workflow.main.iservice.INotificationService;
@@ -22,6 +24,8 @@ public class TaskEventProducer {
     public static final String SUBTASK_ASSIGNED = "SubtaskAssigned";
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final INotificationService notificationService;
+    private final IUsersRepository usersRepository;
+    private final EmailNotificationService emailNotificationService;
 
     public void sendTaskAssignedEvent(Long taskId, String taskTitle, Long projectId, Long assigneeId, Long actorId) {
         TaskAssignedEvent event = TaskAssignedEvent.builder()
@@ -117,6 +121,25 @@ public class TaskEventProducer {
                     .isRead(false)
                     .build();
             notificationService.create(notificationRequest);
+            usersRepository.findById(event.getAssigneeId()).ifPresent(recipient -> {
+                if (isSubtask) {
+                    emailNotificationService.sendSubtaskAssigned(
+                            recipient,
+                            event.getSubtaskTitle(),
+                            event.getTaskTitle(),
+                            event.getTaskId(),
+                            event.getSubtaskId(),
+                            event.getActorId()
+                    );
+                } else {
+                    emailNotificationService.sendTaskAssigned(
+                            recipient,
+                            event.getTaskTitle(),
+                            event.getTaskId(),
+                            event.getActorId()
+                    );
+                }
+            });
             log.info("==> [FALLBACK] Successfully created notification in database for User ID: {}", event.getAssigneeId());
         } catch (Exception e) {
             log.error("==> [FALLBACK] Failed to create notification directly: {}", e.getMessage(), e);
