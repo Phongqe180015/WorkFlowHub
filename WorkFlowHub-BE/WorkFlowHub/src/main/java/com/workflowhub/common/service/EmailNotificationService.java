@@ -1,14 +1,9 @@
 package com.workflowhub.common.service;
 
 import com.workflowhub.common.config.MailConfig;
-import com.workflowhub.common.util.SecurityUtils;
 import com.workflowhub.domain.master.entity.UsersEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.common.security.auth.AuthenticationContext;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -16,8 +11,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmailNotificationService {
 
-    private final JavaMailSender mailSender;
     private final MailConfig mailConfig;
+    private final ResendEmailService resendEmailService;
 
     public void sendTaskAssigned(UsersEntity recipient, String taskTitle, Long taskId, Long actorId) {
         if (isSelf(recipient, actorId)) {
@@ -80,21 +75,14 @@ public class EmailNotificationService {
 
         try {
             configMailToSend(recipient, subject, text);
-        } catch (MailException | IllegalArgumentException ex) {
+        } catch (ResendEmailService.ResendEmailException | IllegalArgumentException | IllegalStateException ex) {
             log.error("Failed to send email notification to user {} for subject '{}'",
                     recipient.getId(), subject, ex);
         }
     }
 
     private void configMailToSend(UsersEntity recipient, String subject, String text) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        if (mailConfig.from() != null && !mailConfig.from().isBlank()) {
-            message.setFrom(mailConfig.from());
-        }
-        message.setTo(recipient.getEmail());
-        message.setSubject(subject);
-        message.setText(text);
-        mailSender.send(message);
+        resendEmailService.send(recipient.getEmail(), subject, text);
         log.info("Email notification sent to user {} for subject '{}'", recipient.getId(), subject);
     }
 
