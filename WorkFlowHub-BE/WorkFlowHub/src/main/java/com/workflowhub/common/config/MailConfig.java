@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record MailConfig(
         boolean enabled,
         String from,
+        String resendApiKey,
         String frontendUrl
 ) {
 }
